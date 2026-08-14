@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Env / secrets
+.env
+.env.local
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store

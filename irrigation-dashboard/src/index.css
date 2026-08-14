@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/fraunces-italic-600.woff2") format("woff2");
+}
+
+@theme {
+  --font-display: Tahoma, Geneva, Verdana, sans-serif;
+  --font-wordmark: "Fraunces", Georgia, serif;
+
+  --color-brand: #15803d;
+  --color-brand-dark: #14532d;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-bg: #eef4f1;
+  --color-surface: #ffffff;
+  --color-card: #f0f5f1;
+}
+
+body {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(21, 128, 61, 0.10), transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(59, 130, 246, 0.10), transparent 40%),
+    radial-gradient(circle at 50% 90%, rgba(21, 128, 61, 0.08), transparent 45%);
+  background-attachment: fixed;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+}
