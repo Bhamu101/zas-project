@@ -3,6 +3,14 @@ CHANGED FILES LOG
 Running log of files changed per feature/task. Newest entries at the top.
 
 
+## 2026-08-24 — Pushed project to GitHub (github.com/Bhamu101/zas-project, private)
+
+- .gitignore — exclude installed tool/skill packages (.agents/, .claude/skills/, claude-android-skill/) as reproducible, non-project-source content
+- First push: initial repo history (2 prior local commits) + all work from this session
+  (mobile app, dashboard rebrand + blurred background, Crop Health AI) committed and pushed
+  as a single commit. Verified no .env/secret files were staged before pushing.
+
+
 ## 2026-08-24 — Crop Health AI (real Gemini vision diagnosis)
 
 Backend:
