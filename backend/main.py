@@ -1,23 +1,92 @@
+import base64
+import json
 import os
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import anthropic
+from google import genai
+from google.genai import errors as genai_errors
+from twilio.rest import Client as TwilioClient
+from twilio.base.exceptions import TwilioRestException
 
 load_dotenv()
 
 app = FastAPI(title="Smart Irrigation API")
 
+# Wildcarded deliberately: this is a no-auth/no-cookie demo API (no credentials
+# to leak), and it's now read from the web dashboard, the mobile app's web
+# build, and native fetch — plus whatever LAN IP / ngrok tunnel URL the mobile
+# app is pointed at that day, which can't be enumerated in advance.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-anthropic_client = anthropic.Anthropic()
+
+def send_whatsapp_alert(message: str) -> None:
+    """Best-effort WhatsApp notification via Twilio; never raises into the caller.
+
+    Alerts are a nice-to-have on top of the dashboard, not the source of truth —
+    a Twilio hiccup shouldn't fail the irrigation action that triggered it.
+    """
+    sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    token = os.environ.get("TWILIO_AUTH_TOKEN")
+    from_number = os.environ.get("TWILIO_WHATSAPP_FROM")
+    to_number = os.environ.get("TWILIO_WHATSAPP_TO")
+
+    if not all([sid, token, from_number, to_number]):
+        return
+
+    try:
+        TwilioClient(sid, token).messages.create(
+            from_=f"whatsapp:{from_number}",
+            to=f"whatsapp:{to_number}",
+            body=message,
+        )
+    except TwilioRestException as e:
+        print(f"WhatsApp alert failed: {e}")
+
+# In-memory state for the demo (no database yet — resets on server restart).
+# Mutated by /api/irrigation/trigger so a manual trigger from the dashboard
+# is actually reflected the next time the frontend polls /api/dashboard.
+BEDS = [
+    {
+        "id": 1, "name": "Bed 1", "vwc": 18, "state": "critical",
+        "lastIrrigation": "Today, 08:15 AM", "durationMin": 45, "waterUsedL": 2450,
+        "soilTempC": 21.4, "trendVwc": [32, 30, 27, 25, 23, 21, 20, 19, 18],
+        "airTempC": 27.0, "humidityPct": 58,
+        "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
+    },
+    {
+        "id": 2, "name": "Bed 2", "vwc": 32, "state": "needs-water",
+        "lastIrrigation": "Yesterday, 06:40 PM", "durationMin": 35, "waterUsedL": 1980,
+        "soilTempC": 21.8, "trendVwc": [42, 40, 38, 37, 35, 34, 33, 33, 32],
+        "airTempC": 26.5, "humidityPct": 61,
+        "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
+    },
+    {
+        "id": 3, "name": "Bed 3", "vwc": 58, "state": "optimal",
+        "lastIrrigation": "Today, 07:50 AM", "durationMin": 40, "waterUsedL": 2150,
+        "soilTempC": 20.9, "trendVwc": [50, 53, 55, 52, 56, 59, 57, 60, 58],
+        "airTempC": 27.4, "humidityPct": 64,
+        "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
+    },
+]
+
+BED_ACTIVITY = [
+    {"id": 1, "time": "09:31 AM", "title": "Bed monitoring data updated", "subtitle": "All bed sensors synchronized", "color": "brand"},
+    {"id": 2, "time": "08:45 AM", "title": "Irrigation cycle completed", "subtitle": "Bed 2 — 15 minutes", "color": "blue"},
+    {"id": 3, "time": "07:30 AM", "title": "Bed 1 moisture dropped below threshold", "subtitle": "18% detected (threshold: 25%)", "color": "red"},
+    {"id": 4, "time": "06:00 AM", "title": "Sensors synchronized", "subtitle": "All systems operational", "color": "blue"},
+    {"id": 5, "time": "05:15 AM", "title": "Weather forecast updated", "subtitle": "Rain expected tomorrow", "color": "blue"},
+]
+
+_next_activity_id = max(a["id"] for a in BED_ACTIVITY) + 1
 
 
 @app.get("/")
@@ -33,30 +102,8 @@ def get_dashboard():
             "status": "OPTIMAL",
             "lastUpdated": "10:30:25 AM",
         },
-        "beds": [
-            {
-                "id": 1, "name": "Bed 1", "vwc": 18, "state": "critical",
-                "lastIrrigation": "Today, 08:15 AM", "durationMin": 45, "waterUsedL": 2450,
-                "soilTempC": 21.4, "trendVwc": [32, 30, 27, 25, 23, 21, 20, 19, 18],
-            },
-            {
-                "id": 2, "name": "Bed 2", "vwc": 32, "state": "needs-water",
-                "lastIrrigation": "Yesterday, 06:40 PM", "durationMin": 35, "waterUsedL": 1980,
-                "soilTempC": 21.8, "trendVwc": [42, 40, 38, 37, 35, 34, 33, 33, 32],
-            },
-            {
-                "id": 3, "name": "Bed 3", "vwc": 58, "state": "optimal",
-                "lastIrrigation": "Today, 07:50 AM", "durationMin": 40, "waterUsedL": 2150,
-                "soilTempC": 20.9, "trendVwc": [50, 53, 55, 52, 56, 59, 57, 60, 58],
-            },
-        ],
-        "bedActivity": [
-            {"id": 1, "time": "09:31 AM", "title": "Bed monitoring data updated", "subtitle": "All bed sensors synchronized", "color": "brand"},
-            {"id": 2, "time": "08:45 AM", "title": "Irrigation cycle completed", "subtitle": "Bed 2 — 15 minutes", "color": "blue"},
-            {"id": 3, "time": "07:30 AM", "title": "Bed 1 moisture dropped below threshold", "subtitle": "18% detected (threshold: 25%)", "color": "red"},
-            {"id": 4, "time": "06:00 AM", "title": "Sensors synchronized", "subtitle": "All systems operational", "color": "blue"},
-            {"id": 5, "time": "05:15 AM", "title": "Weather forecast updated", "subtitle": "Rain expected tomorrow", "color": "blue"},
-        ],
+        "beds": BEDS,
+        "bedActivity": BED_ACTIVITY,
         "irrigationOverview": {
             "todayWaterUseL": 6580,
             "todayWaterUseDeltaPct": -12.4,
@@ -255,7 +302,165 @@ def get_dashboard():
             "firmwareVersion": "v0.3.0-demo",
             "backendVersion": "v0.1.0",
         },
+        # Fields consumed only by the Goho Rakangwara mobile app (Water/Energy
+        # Management screens) — additive, the web dashboard doesn't read these.
+        "mobileExtras": {
+            "tankLevelPct": 71,
+            "weeklyUsageL": 18600,
+            "dailyUsageSeriesL": [2400, 2900, 2600, 3100, 2800, 2100, 1900],
+            "dailyUsageLabels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            "gridAvailable": True,
+            "estimatedWaterSavingPct": 27,
+        },
     }
+
+
+@app.post("/api/irrigation/trigger/{bed_id}")
+def trigger_irrigation(bed_id: int):
+    """Manually trigger irrigation for one bed (demo simulation, no real hardware yet).
+
+    Raises soil moisture into the optimal band, marks the bed optimal, and logs
+    the action to bedActivity so it shows up in Recent Activity / Bed Monitoring
+    on the next dashboard poll.
+    """
+    global _next_activity_id
+
+    bed = next((b for b in BEDS if b["id"] == bed_id), None)
+    if bed is None:
+        raise HTTPException(status_code=404, detail=f"No bed with id {bed_id}")
+
+    previous_vwc = bed["vwc"]
+    bed["vwc"] = min(100, bed["vwc"] + 22)
+    bed["state"] = "optimal" if bed["vwc"] >= 40 else "needs-water"
+    bed["lastIrrigation"] = "Just now"
+    bed["durationMin"] = 0
+    bed["trendVwc"] = (bed.get("trendVwc", []) + [bed["vwc"]])[-9:]
+
+    BED_ACTIVITY.insert(0, {
+        "id": _next_activity_id,
+        "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+        "title": f"Manual irrigation triggered — {bed['name']}",
+        "subtitle": f"Soil moisture raised from {previous_vwc}% to {bed['vwc']}%",
+        "color": "brand",
+    })
+    _next_activity_id += 1
+
+    send_whatsapp_alert(
+        f"💧 Irrigation triggered for {bed['name']}: soil moisture raised from "
+        f"{previous_vwc}% to {bed['vwc']}% ({bed['state']})."
+    )
+
+    return {"bed": bed}
+
+
+class StartIrrigationRequest(BaseModel):
+    durationMin: int = 30
+
+
+@app.post("/api/irrigation/start/{bed_id}")
+def start_irrigation(bed_id: int, req: StartIrrigationRequest):
+    """Open the mobile app's manual-control valve/pump for one bed (demo simulation).
+
+    Pairs with /api/irrigation/stop/{bed_id}, which is what actually raises the
+    bed's moisture — this endpoint just flips pump/valve state so the Irrigation
+    Control screen has something live to show while a cycle is "running".
+    """
+    global _next_activity_id
+
+    bed = next((b for b in BEDS if b["id"] == bed_id), None)
+    if bed is None:
+        raise HTTPException(status_code=404, detail=f"No bed with id {bed_id}")
+    if bed["irrigating"]:
+        raise HTTPException(status_code=409, detail=f"{bed['name']} is already irrigating")
+
+    bed["pumpStatus"] = "ON"
+    bed["valveStatus"] = "OPEN"
+    bed["irrigating"] = True
+    bed["durationMin"] = max(1, req.durationMin)
+
+    BED_ACTIVITY.insert(0, {
+        "id": _next_activity_id,
+        "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+        "title": f"Irrigation started — {bed['name']}",
+        "subtitle": f"Manual cycle, {bed['durationMin']} min",
+        "color": "blue",
+    })
+    _next_activity_id += 1
+
+    return {"bed": bed}
+
+
+@app.post("/api/irrigation/stop/{bed_id}")
+def stop_irrigation(bed_id: int):
+    """Close the valve/pump and, if a cycle was actually running, apply the same
+    moisture bump used by the quick 'trigger' action so both control paths agree.
+    """
+    global _next_activity_id
+
+    bed = next((b for b in BEDS if b["id"] == bed_id), None)
+    if bed is None:
+        raise HTTPException(status_code=404, detail=f"No bed with id {bed_id}")
+
+    was_irrigating = bed["irrigating"]
+    previous_vwc = bed["vwc"]
+
+    if was_irrigating:
+        bed["vwc"] = min(100, bed["vwc"] + 22)
+        bed["state"] = "optimal" if bed["vwc"] >= 40 else "needs-water"
+        bed["lastIrrigation"] = "Just now"
+        bed["trendVwc"] = (bed.get("trendVwc", []) + [bed["vwc"]])[-9:]
+        bed["waterUsedL"] += bed["durationMin"] * 35
+
+    bed["pumpStatus"] = "OFF"
+    bed["valveStatus"] = "CLOSED"
+    bed["irrigating"] = False
+
+    if was_irrigating:
+        BED_ACTIVITY.insert(0, {
+            "id": _next_activity_id,
+            "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+            "title": f"Irrigation complete — {bed['name']}",
+            "subtitle": f"Soil moisture raised from {previous_vwc}% to {bed['vwc']}%",
+            "color": "brand",
+        })
+        _next_activity_id += 1
+
+        send_whatsapp_alert(
+            f"💧 Irrigation complete for {bed['name']}: soil moisture raised from "
+            f"{previous_vwc}% to {bed['vwc']}% ({bed['state']})."
+        )
+
+    return {"bed": bed}
+
+
+@app.post("/api/alerts/test-whatsapp")
+def test_whatsapp_alert():
+    """Send a one-off WhatsApp message to confirm Twilio credentials are wired up."""
+    if not all(
+        os.environ.get(v)
+        for v in ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM", "TWILIO_WHATSAPP_TO"]
+    ):
+        raise HTTPException(
+            status_code=500,
+            detail="Twilio WhatsApp isn't configured yet — set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, "
+            "TWILIO_WHATSAPP_FROM and TWILIO_WHATSAPP_TO in backend/.env.",
+        )
+
+    sid = os.environ["TWILIO_ACCOUNT_SID"]
+    token = os.environ["TWILIO_AUTH_TOKEN"]
+    from_number = os.environ["TWILIO_WHATSAPP_FROM"]
+    to_number = os.environ["TWILIO_WHATSAPP_TO"]
+
+    try:
+        TwilioClient(sid, token).messages.create(
+            from_=f"whatsapp:{from_number}",
+            to=f"whatsapp:{to_number}",
+            body="✅ Smart Irrigation Dashboard: WhatsApp alerts are set up correctly.",
+        )
+    except TwilioRestException as e:
+        raise HTTPException(status_code=502, detail=f"Twilio request failed: {e}")
+
+    return {"status": "sent"}
 
 
 class ChatMessage(BaseModel):
@@ -269,10 +474,10 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/assistant/chat")
 def assistant_chat(req: ChatRequest):
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    if not os.environ.get("GEMINI_API_KEY"):
         raise HTTPException(
             status_code=500,
-            detail="ANTHROPIC_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
+            detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
         )
 
     dashboard = get_dashboard()
@@ -295,27 +500,113 @@ def assistant_chat(req: ChatRequest):
         f"Water used today: {dashboard['kpis']['waterUsedTodayL']} L."
     )
 
+    genai_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    contents = [
+        {"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
+        for m in req.messages
+    ]
+
     try:
-        response = anthropic_client.messages.create(
-            model="claude-opus-5",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        response = genai_client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=contents,
+            config=genai.types.GenerateContentConfig(system_instruction=system_prompt),
         )
-    except anthropic.AuthenticationError:
-        raise HTTPException(
-            status_code=500,
-            detail="ANTHROPIC_API_KEY is missing or invalid on the server (set it in backend/.env).",
-        )
-    except anthropic.RateLimitError:
-        raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
-    except anthropic.APIConnectionError:
-        raise HTTPException(status_code=502, detail="Could not reach the Claude API. Check your internet connection.")
-    except anthropic.APIStatusError as e:
+    except genai_errors.ClientError as e:
+        if e.code in (401, 403):
+            raise HTTPException(
+                status_code=500,
+                detail="GEMINI_API_KEY is missing or invalid on the server (set it in backend/.env).",
+            )
+        if e.code == 429:
+            raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
+        raise HTTPException(status_code=502, detail=f"Assistant request failed: {e.message}")
+    except genai_errors.ServerError as e:
         raise HTTPException(status_code=502, detail=f"Assistant request failed: {e.message}")
 
-    if response.stop_reason == "refusal":
-        return {"reply": "I'm not able to help with that request."}
+    return {"reply": response.text or ""}
 
-    text = "".join(block.text for block in response.content if block.type == "text")
-    return {"reply": text}
+
+class CropHealthRequest(BaseModel):
+    imageBase64: str
+    mimeType: str = "image/jpeg"
+    cropName: str | None = None
+
+
+@app.post("/api/crop-health/diagnose")
+def diagnose_crop_health(req: CropHealthRequest):
+    """Real vision-model plant diagnosis: farmer photographs a plant, Gemini identifies
+    disease/pest/deficiency signs and returns a structured, farmer-actionable diagnosis.
+
+    Shared by both clients (mobile app and web dashboard's Crop Health page) so there is
+    exactly one diagnosis pipeline/prompt to maintain.
+    """
+    if not os.environ.get("GEMINI_API_KEY"):
+        raise HTTPException(
+            status_code=500,
+            detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
+        )
+
+    try:
+        base64.b64decode(req.imageBase64, validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="imageBase64 is not valid base64 image data.")
+
+    crop_hint = f" The farmer says this is a {req.cropName} plant." if req.cropName else ""
+    system_prompt = (
+        "You are a plant pathologist assisting smallholder farmers in Zimbabwe. A farmer has "
+        "photographed a plant (leaf, stem, or whole plant) with their phone and wants to know if "
+        "it's healthy, and if not, what's wrong and what to do about it." + crop_hint + " "
+        "Look carefully at the image and respond with ONLY a JSON object (no markdown, no code "
+        "fences) matching exactly this shape:\n"
+        '{"plantIdentified": string, "healthStatus": "healthy" | "diseased" | "pest" | '
+        '"nutrient_deficiency" | "unclear", "condition": string, "confidencePct": number, '
+        '"severity": "none" | "low" | "moderate" | "high", "description": string, '
+        '"treatment": string, "preventionTips": string}\n\n'
+        "plantIdentified: your best guess at the plant/crop shown. condition: the specific "
+        'disease/pest/deficiency name, or "Healthy" if nothing is wrong. description: 1-2 plain '
+        "sentences on what you actually observe in the image (spots, discoloration, wilting, "
+        "insects, etc.) and why it points to that condition. treatment: concrete, actionable steps "
+        "a smallholder farmer can take, favoring low-cost/organic options where reasonable. "
+        "preventionTips: 1 sentence on avoiding this going forward. If the image doesn't clearly "
+        'show a plant, set healthStatus to "unclear" and explain why in description.'
+    )
+
+    genai_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    contents = [
+        {
+            "role": "user",
+            "parts": [
+                {"inline_data": {"mime_type": req.mimeType, "data": req.imageBase64}},
+                {"text": "Diagnose this plant."},
+            ],
+        }
+    ]
+
+    try:
+        response = genai_client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=contents,
+            config=genai.types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+            ),
+        )
+    except genai_errors.ClientError as e:
+        if e.code in (401, 403):
+            raise HTTPException(
+                status_code=500,
+                detail="GEMINI_API_KEY is missing or invalid on the server (set it in backend/.env).",
+            )
+        if e.code == 429:
+            raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
+        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
+    except genai_errors.ServerError as e:
+        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
+
+    try:
+        diagnosis = json.loads(response.text or "{}")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=502, detail="The AI response could not be parsed. Please try again.")
+
+    return {"diagnosis": diagnosis}

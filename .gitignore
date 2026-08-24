@@ -15,8 +15,12 @@ dist/
 dist-ssr/
 *.local
 
-# Claude Code local settings
+# Claude Code local settings and installed skill packages (reproducible via
+# the skills tool, not project source)
 .claude/settings.local.json
+.claude/skills/
+.agents/
+claude-android-skill/
 
 # Logs
 logs

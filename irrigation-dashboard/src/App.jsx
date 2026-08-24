@@ -15,7 +15,7 @@ import { useDashboardData } from "./hooks/useDashboardData";
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { data, error, loading } = useDashboardData();
+  const { data, error, loading, refetch } = useDashboardData();
 
   if (loading) {
     return (
@@ -43,6 +43,7 @@ function App() {
           beds={data.beds}
           systemInfo={data.systemInfo}
           irrigationOverview={data.irrigationOverview}
+          onIrrigationTriggered={refetch}
         />
       );
       case "energy": return (

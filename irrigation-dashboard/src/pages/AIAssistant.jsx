@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, User, AlertTriangle } from "lucide-react";
 
-const CHAT_URL = "http://localhost:8001/api/assistant/chat";
+const CHAT_URL = "http://localhost:8021/api/assistant/chat";
 
 const GREETING = {
   role: "assistant",

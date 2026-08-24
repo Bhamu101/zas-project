@@ -1,0 +1,21 @@
+CHANGED FILES LOG
+=================
+Running log of files changed per feature/task. Newest entries at the top.
+
+
+## 2026-08-24 — Crop Health AI (real Gemini vision diagnosis)
+
+Backend:
+- backend/main.py — new POST /api/crop-health/diagnose endpoint (Gemini vision call + structured JSON diagnosis)
+
+Mobile app:
+- mobile-app/src/app/(tabs)/crops/health.tsx — new screen (photo capture -> AI diagnosis result)
+- mobile-app/src/app/(tabs)/crops/index.tsx — added "Diagnose a Plant" entry-point card
+- mobile-app/src/services/api.ts — added diagnoseCropHealth()
+- mobile-app/src/types/index.ts — added CropDiagnosis, CropHealthStatus, CropHealthSeverity types
+- mobile-app/app.json — added expo-image-picker plugin config (camera/photo permissions)
+- mobile-app/package.json — added expo-image-picker dependency
+
+Web dashboard:
+- irrigation-dashboard/src/pages/CropHealth.jsx — rewritten: working upload/diagnose tool added above the existing "planned ESP32-CAM" section
+- irrigation-dashboard/src/components/layout/TopBar.jsx — subtitle fix (no longer says "coming soon")

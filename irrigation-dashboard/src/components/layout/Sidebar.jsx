@@ -21,7 +21,13 @@ export default function Sidebar({ activePage, onNavigate, open = true }) {
         open ? "w-64" : "w-20"
       }`}
     >
-      <div className="w-full h-full bg-gradient-to-b from-brand to-brand-dark flex flex-col p-3">
+      <div className="relative w-full h-full overflow-hidden flex flex-col p-3">
+        <div
+          className="absolute inset-0 -z-20 bg-cover bg-center scale-110"
+          style={{ backgroundImage: 'url(/images/plant-bg.jpg)', filter: 'blur(14px)' }}
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand/28 to-brand-dark/32" />
+
         <div className="flex items-center gap-3 px-2 pt-2 pb-4 mb-2 border-b border-white/15">
           <Leaf size={26} className="text-white shrink-0" strokeWidth={1.75} />
           {open && (

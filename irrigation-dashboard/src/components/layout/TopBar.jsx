@@ -28,7 +28,7 @@ const PAGE_META = {
   irrigation: { title: "Irrigation Control", subtitle: "Monitor and control irrigation across all beds." },
   energy: { title: "Energy Management", subtitle: "Track solar, battery, and grid power usage." },
   beds: { title: "Bed Monitoring", subtitle: "Live soil moisture and temperature per bed." },
-  "crop-health": { title: "Crop Health (AI)", subtitle: "AI-powered crop health detection, coming soon." },
+  "crop-health": { title: "Crop Health (AI)", subtitle: "Upload a plant photo for an instant AI diagnosis." },
   reports: { title: "Data & Reports", subtitle: "Analyse performance and generate insights." },
   alerts: { title: "Alerts & Notifications", subtitle: "Stay informed about important events on your farm." },
   settings: { title: "System Settings", subtitle: "Configure irrigation thresholds and system info." },

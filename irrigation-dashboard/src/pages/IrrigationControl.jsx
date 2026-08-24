@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
   Droplets, Play, Info, MoreVertical, ChevronRight, Calendar, Clock,
-  TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown, Loader2, AlertTriangle,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import ProgressBar from "../components/dashboard/ProgressBar";
+
+const TRIGGER_URL = (bedId) => `http://localhost:8021/api/irrigation/trigger/${bedId}`;
 
 const STATE_HEX = { optimal: "#16a34a", "needs-water": "#eab308", critical: "#ef4444" };
 const STATE_LABEL = { optimal: "Optimal", "needs-water": "Needs Water", critical: "Critical" };
@@ -27,10 +29,29 @@ function DeltaTag({ value, goodDirection = "down" }) {
   );
 }
 
-export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview }) {
+export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview, onIrrigationTriggered }) {
   const [mode, setMode] = useState("automatic");
+  const [triggeringBedId, setTriggeringBedId] = useState(null);
+  const [triggerError, setTriggerError] = useState(null);
 
   const targetRange = systemInfo ? `${systemInfo.vwcOptimalMin}% - ${systemInfo.vwcOptimalMax}%` : "40% - 60%";
+
+  async function handleTrigger(bedId) {
+    setTriggeringBedId(bedId);
+    setTriggerError(null);
+    try {
+      const res = await fetch(TRIGGER_URL(bedId), { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Server responded ${res.status}`);
+      }
+      await onIrrigationTriggered?.();
+    } catch (err) {
+      setTriggerError(err.message || "Could not reach the backend.");
+    } finally {
+      setTriggeringBedId(null);
+    }
+  }
 
   const overviewTiles = irrigationOverview && [
     { icon: Droplets, color: "text-blue-500", label: "Today's Water Use", value: `${irrigationOverview.todayWaterUseL.toLocaleString()} L`, delta: irrigationOverview.todayWaterUseDeltaPct, goodDirection: "down" },
@@ -126,20 +147,37 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
               </div>
 
               <button
-                disabled={mode === "automatic"}
+                onClick={() => handleTrigger(bed.id)}
+                disabled={mode === "automatic" || triggeringBedId === bed.id}
                 className={`w-full flex items-center justify-center gap-2 text-sm font-bold rounded-xl py-3 transition-colors ${
-                  mode === "automatic"
+                  mode === "automatic" || triggeringBedId === bed.id
                     ? "bg-card text-muted cursor-not-allowed"
                     : "bg-brand text-white hover:bg-brand-dark"
                 }`}
               >
-                <Play size={15} />
-                Trigger Irrigation Now
+                {triggeringBedId === bed.id ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    Triggering…
+                  </>
+                ) : (
+                  <>
+                    <Play size={15} />
+                    Trigger Irrigation Now
+                  </>
+                )}
               </button>
             </div>
           );
         })}
       </div>
+
+      {triggerError && (
+        <div className="flex items-center gap-2 text-xs text-red-600 rounded-xl px-4 py-3 bg-surface border border-red-100">
+          <AlertTriangle size={14} className="shrink-0" />
+          Could not trigger irrigation: {triggerError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
         <div className="lg:col-span-2 bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
