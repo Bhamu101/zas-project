@@ -74,13 +74,15 @@ function App() {
     <div className="flex h-screen overflow-hidden text-ink font-display">
       <Sidebar activePage={activePage} onNavigate={setActivePage} open={sidebarOpen} />
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <TopBar
-          activePage={activePage}
-          alerts={data.alerts}
-          onNavigate={setActivePage}
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-        />
-      <main className="flex-1 overflow-y-auto p-4">{renderPage()}</main>
+        {activePage !== "dashboard" && (
+          <TopBar
+            activePage={activePage}
+            alerts={data.alerts}
+            onNavigate={setActivePage}
+            onToggleSidebar={() => setSidebarOpen((v) => !v)}
+          />
+        )}
+        <main className="flex-1 overflow-y-auto p-4">{renderPage()}</main>
       </div>
     </div>
   );

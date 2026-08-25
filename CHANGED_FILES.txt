@@ -3,6 +3,96 @@ CHANGED FILES LOG
 Running log of files changed per feature/task. Newest entries at the top.
 
 
+## 2026-08-25 — Prepped mobile app + backend for a remote (non-LAN) APK download
+
+- render.yaml — new: Render Blueprint for backend/ (FastAPI), free-tier web service,
+  `uvicorn main:app --host 0.0.0.0 --port $PORT`; secret env vars (Gemini/Twilio) marked
+  sync: false so they're entered directly in the Render dashboard, never committed
+- mobile-app/app.json — added android.package ("com.gohorakangwara.agriintelligence"),
+  required for a standalone EAS build (was missing, Expo Go doesn't need it)
+- mobile-app/eas.json — new: "preview" build profile producing an installable .apk
+  (internal distribution) instead of the Play Store's .aab
+- mobile-app/.env, mobile-app/.env.example — EXPO_PUBLIC_API_URL switched from this PC's
+  LAN IP (only reachable on the same WiFi) to the Render URL, since a standalone build
+  bakes this in at build time and needs to work anywhere. User still needs to deploy via
+  render.yaml and confirm/update the actual URL before running `eas build`.
+
+Not done (needs the user's own Render/Expo accounts, which I can't act on non-interactively):
+actually deploying the Render blueprint, and running `eas login` + `eas build -p android
+--profile preview`.
+
+
+## 2026-08-25 — Dropped hero kicker, added 4th slideshow photo, "AI Assistant" -> "Goho AI"
+
+- irrigation-dashboard/src/pages/Dashboard.jsx — removed the "ZAS 2026 THEME" kicker line
+  above the hero title; added a 4th photo (public/images/hero-solar.jpg, solar panels +
+  wind turbines) to the crossfade slideshow rotation
+- irrigation-dashboard/public/images/hero-solar.jpg — new, user-supplied
+- irrigation-dashboard/src/components/layout/Sidebar.jsx,
+  irrigation-dashboard/src/components/layout/TopBar.jsx,
+  irrigation-dashboard/src/pages/AIAssistant.jsx — renamed "AI Assistant"/"AI ASSISTANT"
+  label to "Goho AI" (nav item, TopBar title, panel heading); page id/route unchanged
+
+
+## 2026-08-25 — Hero: real photo slideshow, tagline, TopBar removed on Dashboard
+
+- irrigation-dashboard/src/pages/Dashboard.jsx — background is now a slow crossfade
+  slideshow between three user-supplied photos (public/images/hero-{harvest,sunset,pivot}.jpg,
+  6.5s per slide, 1.8s crossfade), replacing the gradient placeholder. Added the
+  "Powering Growth — Where Agriculture, Technology and Commerce Converge" tagline beneath
+  the title, with its own scroll-linked fade.
+- irrigation-dashboard/src/pages/Dashboard.css — photo layer, crossfade transition, a flat
+  contrast overlay (independent of the scroll-linked shade) so text stays legible against
+  bright sky/sunset frames, tagline styles; stage height math updated for TopBar removal
+- irrigation-dashboard/src/App.jsx — TopBar now hidden specifically on the Dashboard page
+  (still shown on every other page) for an unbroken immersive hero
+
+
+## 2026-08-25 — Cinematic scroll-hero replaces the Dashboard page's content
+
+- irrigation-dashboard/src/pages/Dashboard.jsx — rewritten: real KPI/alerts content
+  replaced with a sticky-scroll cinematic hero ("ZAS 2026 THEME" kicker + "Welcome to
+  Goho Rakangwara" title that shrinks/fades on scroll). Adapted from a user-supplied
+  vanilla-JS scroll-choreography spec (originally a Bosnia/Mostar tourism page) — kept
+  only the scroll mechanism, dropped its content, third-party-hosted photography, and
+  hotlinked font (see below). Scroll tracking attaches to this app's actual scrolling
+  element (`<main>`), not window, since the prior engine assumed the latter.
+- irrigation-dashboard/src/pages/Dashboard.css — new: styles for the above
+- irrigation-dashboard/index.html — added Google Fonts "Fraunces" (variable weight,
+  upright + italic) to pair with the existing self-hosted Fraunces italic already used
+  for the sidebar wordmark
+
+Note: the source spec's font ("Ogg Medium") and all scene photography were hotlinked
+from a third party's private Figma Sites export / personal CloudFront bucket — not
+appropriate to embed in a real product. Used the project's existing Fraunces identity
+instead; scene is a brand-gradient placeholder pending real farm photography (user chose
+to supply this later rather than reuse the existing plant-bg.jpg or go photo-less).
+
+
+## 2026-08-25 — Redesigned solar tracker illustration to match a reference diagram
+
+- irrigation-dashboard/src/components/energy/SolarTrackerCard.jsx — replaced the single-pole
+  mount with a two-post tilt-table design (posts + pivot hinges + rotating panel plank +
+  orange rotation-arrow accent), based on a reference image the user provided. Fixed the
+  geometry so the panel doesn't swing through the ground at extreme tilt angles (shortened
+  the panel, raised the posts, reduced max tilt from 55deg to 45deg).
+
+
+## 2026-08-25 — Solar tracker preview on the web dashboard's Energy Management page
+
+- irrigation-dashboard/src/components/energy/SolarTrackerCard.jsx — new component: original
+  animated single-axis (E-W) tracker illustration (SVG/CSS, no external asset), with a
+  JS-synced tilt-angle readout, sensing-mode badge, and estimated-gain note. Explicitly
+  labeled as a preview (tracker hardware not yet built, per PROJECT-OBJECTIVES.md 2b) —
+  not live sensor data.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — mounted the new card
+
+Note: user initially provided a GIF for this, but it turned out to be an unlicensed
+Dreamstime stock-preview clip (visible watermark), not their own footage as stated. Declined
+to strip the watermark and built an original illustration instead. Source file was deleted,
+never committed.
+
+
 ## 2026-08-24 — Pushed project to GitHub (github.com/Bhamu101/zas-project, private)
 
 - .gitignore — exclude installed tool/skill packages (.agents/, .claude/skills/, claude-android-skill/) as reproducible, non-project-source content

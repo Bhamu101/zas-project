@@ -24,7 +24,7 @@ const weatherIconMap = {
 
 const PAGE_META = {
   dashboard: { title: "Welcome back, Bhamu \u{1F44B}", subtitle: "Here is what has been happening on your farm today." },
-  "ai-assistant": { title: "AI Assistant", subtitle: "Ask about your beds, irrigation, or energy system." },
+  "ai-assistant": { title: "Goho AI", subtitle: "Ask about your beds, irrigation, or energy system." },
   irrigation: { title: "Irrigation Control", subtitle: "Monitor and control irrigation across all beds." },
   energy: { title: "Energy Management", subtitle: "Track solar, battery, and grid power usage." },
   beds: { title: "Bed Monitoring", subtitle: "Live soil moisture and temperature per bed." },

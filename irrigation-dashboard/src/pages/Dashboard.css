@@ -1,0 +1,131 @@
+/* Cinematic scroll-hero — see Dashboard.jsx for the scroll-choreography JS
+   this pairs with. Custom properties below are written from that effect. */
+
+.cinema-hero {
+  position: relative;
+  /* Sticky stage height (~viewport minus <main>'s p-4 padding, no TopBar on
+     this page) + extra scroll room that drives the choreography. */
+  height: calc(100vh - 32px + 900px);
+  min-height: 1200px;
+}
+
+.cinema-stage {
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 32px);
+  min-height: 480px;
+  border-radius: 24px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.cinema-world {
+  --kicker-y: 0px;
+  --kicker-opacity: 1;
+  --title-y: 0px;
+  --title-scale: 1;
+  --title-opacity: 1;
+  --tagline-y: 0px;
+  --tagline-opacity: 1;
+  --shade-alpha: 0.12;
+
+  position: absolute;
+  inset: 0;
+}
+
+/* Color base underneath the photos — covers any gap while an image loads,
+   and tints the crossfade transitions so they never flash white. */
+.cinema-scene {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #14532d 0%, #15803d 45%, #0b3a1f 100%);
+}
+
+.cinema-scene-photos {
+  position: absolute;
+  inset: 0;
+}
+
+.cinema-scene-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1800ms ease;
+}
+
+/* Flat contrast layer so title/tagline stay legible against a bright sky
+   or sunset frame, independent of the scroll-linked shade below. */
+.cinema-scene-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 20, 12, 0.4);
+}
+
+.cinema-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 26, 17, var(--shade-alpha)) 0%, rgba(11, 26, 17, 0) 45%, rgba(11, 26, 17, calc(var(--shade-alpha) + 0.1)) 100%);
+  pointer-events: none;
+}
+
+.cinema-copy {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(90vw, 900px);
+  transform: translate3d(-50%, -50%, 0);
+  text-align: center;
+  padding: 0 24px;
+}
+
+.cinema-kicker {
+  display: inline-block;
+  color: rgba(253, 241, 225, 0.86);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+  transform: translate3d(0, var(--kicker-y), 0);
+  opacity: var(--kicker-opacity);
+  will-change: transform, opacity;
+}
+
+.cinema-title {
+  margin: 18px 0 0;
+  color: #fdf1e1;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 500;
+  font-size: clamp(2.6rem, 6.2vw, 5.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  text-shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+  transform: translate3d(0, var(--title-y), 0) scale(var(--title-scale));
+  opacity: var(--title-opacity);
+  will-change: transform, opacity;
+}
+
+.cinema-tagline {
+  margin: 22px auto 0;
+  max-width: 560px;
+  color: rgba(253, 241, 225, 0.92);
+  font-size: clamp(0.95rem, 1.6vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.35;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.42);
+  transform: translate3d(0, var(--tagline-y), 0);
+  opacity: var(--tagline-opacity);
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinema-kicker,
+  .cinema-title,
+  .cinema-tagline,
+  .cinema-scene-photo {
+    transition: none;
+  }
+}

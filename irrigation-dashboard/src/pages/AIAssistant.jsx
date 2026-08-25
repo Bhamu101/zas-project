@@ -62,7 +62,7 @@ export default function AIAssistant() {
       <div className="flex items-center gap-2 p-4 border-b border-gray-100 shrink-0">
         <Bot size={18} className="text-brand" />
         <div>
-          <h2 className="text-sm font-bold text-ink">AI ASSISTANT</h2>
+          <h2 className="text-sm font-bold text-ink">Goho AI</h2>
           <p className="text-xs text-muted">Ask about your beds, irrigation, or energy system</p>
         </div>
       </div>

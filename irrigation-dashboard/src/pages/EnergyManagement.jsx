@@ -3,6 +3,7 @@ import {
   Power, Battery, Sun, Zap, BatteryCharging, Gauge, Leaf, TrendingUp, TrendingDown, Info,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+import SolarTrackerCard from "../components/energy/SolarTrackerCard";
 
 const sourceIconMap = { solar: Sun, battery: Battery, grid: Zap };
 const sourceLabelMap = { solar: "Solar", battery: "Battery", grid: "Grid (ZESA)" };
@@ -112,6 +113,8 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
           )}
         </div>
       </div>
+
+      <SolarTrackerCard />
 
       <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">

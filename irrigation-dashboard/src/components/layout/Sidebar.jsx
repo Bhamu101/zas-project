@@ -4,7 +4,7 @@ import {
 
 const navItems = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { id: "ai-assistant", icon: Bot, label: "AI Assistant" },
+  { id: "ai-assistant", icon: Bot, label: "Goho AI" },
   { id: "irrigation", icon: Droplets, label: "Irrigation Control" },
   { id: "energy", icon: Zap, label: "Energy Management" },
   { id: "beds", icon: Sprout, label: "Bed Monitoring" },
