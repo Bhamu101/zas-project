@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { Bell, Droplets, Sprout, Thermometer, User } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +35,7 @@ export default function HomeScreen() {
   const { data, isLoading, isOffline, error, lastSyncedAt, fetchNow, startPolling, stopPolling } =
     useDashboardStore();
   const { weather, fetchNow: fetchWeather } = useWeatherStore();
+  const [slowLoad, setSlowLoad] = useState(false);
 
   useEffect(() => {
     startPolling();
@@ -45,7 +46,24 @@ export default function HomeScreen() {
     if (!weather) fetchWeather();
   }, [weather, fetchWeather]);
 
-  if (!data && isLoading) return <LoadingState label="Loading your farm…" />;
+  useEffect(() => {
+    if (!isLoading) {
+      setSlowLoad(false);
+      return;
+    }
+    // The backend sleeps after inactivity (Render free tier) and can take
+    // ~30-60s to wake on the first request, so the plain spinner looks frozen.
+    const t = setTimeout(() => setSlowLoad(true), 5000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
+  if (!data && isLoading) {
+    return (
+      <LoadingState
+        label={slowLoad ? 'Waking up your farm’s server… this can take up to a minute' : 'Loading your farm…'}
+      />
+    );
+  }
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
   if (!data) return null;
 

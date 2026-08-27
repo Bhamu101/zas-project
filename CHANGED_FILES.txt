@@ -3,6 +3,303 @@ CHANGED FILES LOG
 Running log of files changed per feature/task. Newest entries at the top.
 
 
+## 2026-08-27 — Added then removed the "Live Simulation" page (per request)
+
+Built a self-contained Live Simulation scenario page (auto-irrigation + energy
+changeover with pop-up alerts, sidebar entry) and then reverted it the same session
+at the user's request. Net effect on the tree: none.
+
+- irrigation-dashboard/src/pages/Simulation.jsx — created, then deleted.
+- irrigation-dashboard/src/App.jsx — Simulation import + "simulation" route case
+  added, then removed.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — bottom-pinned "Live
+  Simulation" nav item + NavButton refactor added, then reverted to the original
+  inline nav mapping.
+- irrigation-dashboard/src/components/layout/TopBar.jsx — "simulation" PAGE_META
+  entry added, then removed.
+
+Verified after revert: `npx eslint` clean, `npx vite build` succeeds, no lingering
+Simulation references.
+
+
+## 2026-08-27 — Per-crop moisture targets + bed crop labels + gradual irrigation sim
+
+- backend/main.py — added a per-crop CROP_TARGETS table (Covo: trigger 32 /
+  optimal 48-68%, Tsunga: 30 / 45-65%, Tomato: 22 / 34-52% VWC — leafy brassicas
+  run wetter, deeper-rooted tomato runs drier). Each seed bed now carries `crop`
+  plus its own vwcTrigger / vwcOptimalMin / vwcOptimalMax (spread from the table).
+  Re-seeded Bed 2 (38%) and Bed 3 (44%) so their states still line up with the new
+  per-crop thresholds. New bed_state() helper re-derives a bed's status from its own
+  thresholds; the manual-trigger and stop-irrigation endpoints use it instead of a
+  hardcoded ">= 40".
+- irrigation-dashboard/src/lib/cropTargets.js — new: CROP_TARGETS (mirrors the
+  backend) + bedTargets(bed, systemInfo) which resolves a bed's thresholds, preferring
+  per-bed backend values, then the per-crop table, then system-wide defaults. Also
+  returns the resolved crop name, so it doubles as the crop-label fallback.
+- irrigation-dashboard/src/pages/BedMonitoring.jsx — bed card heading reads "Bed N:
+  Crop" as plain text at text-xl (no icon/chip). Range bar, the "<crop> optimal:
+  X-Y% / trigger < Z%" line, the Recommended-Actions text (now quotes the real band /
+  trigger numbers), and the Moisture Trend legend all use bedTargets() — so each bed
+  shows its own crop's range. Moisture Trend now draws one faint shaded band per
+  crop's optimal range instead of a single system-wide band.
+- irrigation-dashboard/src/pages/IrrigationControl.jsx — bed card heading "Bed N:
+  Crop" plain text at text-lg; the target line shows "<crop> target: X-Y% · trigger
+  < Z%" per bed. "Trigger Irrigation Now" no longer POSTs to the backend (which
+  jumped VWC +22 instantly) — it runs a client-side sim: the reading climbs gradually
+  (~1.4%/tick w/ jitter every 450ms) toward the middle of that crop's optimal band,
+  the % counts up live, droplet icon pulses, status badge re-derives against the
+  crop's own thresholds, progress bar fills, button shows "Irrigating… NN%" disabled,
+  and the Bed Moisture Map node tracks it. Intervals cleared on unmount / re-trigger.
+  Removed the dead fetch/error-banner code, the unused onIrrigationTriggered prop and
+  Sprout import.
+- irrigation-dashboard/src/App.jsx — dropped the now-unused refetch /
+  onIrrigationTriggered wiring for IrrigationControl.
+
+Verified: `python -c "import ast..."` parses backend, `npx eslint` clean on the
+touched files, `npx vite build` succeeds.
+
+
+## 2026-08-27 — Energy Management: "solar system" wording, slower/synced simulations, bigger savings figures
+
+- irrigation-dashboard/src/components/energy/BatteryBars.jsx — new: reusable segmented
+  battery indicator (5 bars, fills by charge level, colour steps green/amber/red). Used
+  wherever a battery level is shown on this page so a falling battery visibly drops from
+  5 bars to 3 bars instead of shrinking a thin strip.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — removed "TODAY'S POWER SOURCE
+  TIMELINE" section and the "BATTERY CHARGE / DISCHARGE" chart entirely (with their now-
+  unused helpers/imports). Lifted battery + active-source state to the page: the ATS
+  changeover reports its active source up, that drives the live battery drift, and the
+  drifting battery feeds back into the top "Battery Level" card, Smart Power
+  Recommendation, and the ATS logic — so every card stays in sync. Battery Level card now
+  uses BatteryBars.
+- irrigation-dashboard/src/components/energy/LiveOperationsSimulator.jsx — heading
+  "LIVE OPERATIONS SIMULATION" -> "LIVE OPERATIONS". Removed the "Demo simulation…" footer
+  text. Slowed the tick from 2s to 9s and the irrigation cycle to 45-60s; battery bars
+  now via BatteryBars. Drift now follows the ATS active source (passed in from the page).
+  "Charging from solar" -> "Charging from solar system".
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx — heading
+  "ATS CHANGEOVER SIMULATION" -> "ATS CHANGEOVER". Slowed: eval 5s -> 18s, changeover
+  transition 2.2s -> 6s, flow-dot animation 1.6s -> 4s. Reports active source up via
+  onSourceChange; reads battery from a ref so the eval interval no longer restarts on
+  every battery change. The "why this source" justification is now a visible bordered
+  callout (text-sm) instead of tiny centred text. "Solar Array" label -> "Solar System".
+- irrigation-dashboard/src/components/energy/SmartPowerRecommendation.jsx — removed the
+  "Grid stability is simulated for this preview…" footer text. Suggested-source label
+  "Solar" -> "Solar System". Reason text promoted to a bordered "Why this source" callout.
+- irrigation-dashboard/src/components/energy/EnergySavingsCard.jsx — figures now scale to
+  full solar-system output (x8) and drift on a slow 7s interval so the savings and grid
+  sell-back numbers actually change; default rates raised ($0.35 grid / $0.18 feed-in).
+  "self-used solar" -> "self-used solar system", "surplus solar" -> "surplus solar system
+  output", "solar generation" -> "solar system generation".
+- irrigation-dashboard/src/lib/energySimulation.js — recommendation reason strings:
+  "solar" -> "solar system" in the two farmer-facing sentences.
+- Deleted irrigation-dashboard/src/components/energy/BatteryFlowChart.jsx (was the
+  removed Battery Charge / Discharge chart).
+
+Verified: `npx vite build` succeeds.
+
+
+## 2026-08-26 — ATS changeover now grid-stability-driven; removed "Simulated/Concept/Estimated" badges
+
+- irrigation-dashboard/src/lib/energySimulation.js — new: extracted the grid-stability wave,
+  solar score table, and recommendSource() decision logic out of SmartPowerRecommendation
+  so it's a single shared source of truth.
+- irrigation-dashboard/src/components/energy/SmartPowerRecommendation.jsx — now imports the
+  shared logic instead of duplicating it; removed the "Concept" badge from the header.
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx — rewritten: the
+  ATS no longer cycles Solar->Battery->Grid on a fixed ~11s timer. It now re-evaluates the
+  same grid-stability/solar/battery metrics as Smart Power Recommendation every 5s and only
+  triggers a changeover when the recommended source actually differs from the active one —
+  since grid stability drifts slowly against the real clock, switches now happen
+  realistically rarely instead of on every cycle. Shows the specific reason for the switch
+  (shared with Smart Power Recommendation, so the two cards never disagree) and a "Deciding
+  factor: grid stability at X% (label)" readout. Removed the "Simulated" badge.
+- irrigation-dashboard/src/components/energy/LiveOperationsSimulator.jsx — removed the
+  "Simulated · Live" badge from the header.
+- irrigation-dashboard/src/components/energy/EnergySavingsCard.jsx — removed the
+  "Estimated" badge from the header.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — passes kpis.batteryPct into
+  GridChangeoverSimulation so its recommendation logic has real battery context.
+
+Verified: `npx eslint` clean (had to move a piece of ref-based state into real React state —
+first draft read a ref during render, which `react-hooks/refs` correctly flagged), `npx vite
+build` succeeds. Confirmed live in-browser that the ATS card and Smart Power Recommendation
+card show the exact same suggested source and reason text at the same time, and that none of
+the four badge words (Concept/Simulated) appear anymore.
+
+
+## 2026-08-26 — Energy Management: live simulations + savings/sell-back, removed 60W solar card
+
+- irrigation-dashboard/src/components/energy/LiveOperationsSimulator.jsx — new: client-side
+  ticking simulation (2s interval) showing irrigation cycling on/off on a timer (seeded from
+  kpis.irrigationStatus) and a live battery % that drifts up/down based on the active power
+  source (drains on battery, charges on solar, holds on grid), with an instantaneous kW draw
+  readout. Clearly labeled "Simulated · Live" — no real telemetry backs it.
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx — new: animated
+  ATS diagram (Solar/Battery/Grid -> ATS -> Farm Load) that cycles the active source on a
+  timer with a "Changeover in progress" transient state and a flowing-dot animation on the
+  active path. Labeled "Simulated".
+- irrigation-dashboard/src/components/energy/EnergySavingsCard.jsx — new: computes money
+  saved today from self-consumed solar vs. what buying that from the grid would have cost,
+  plus a potential-earnings estimate for selling the surplus (non-self-consumed) solar back
+  to the national grid. Grid rate and feed-in rate are editable number inputs (defaults
+  $0.20 / $0.08 per kWh), derived from energyOverview.stats (Solar Energy Generated, Self
+  Consumption). Labeled "Estimated" with a note that real sell-back needs a feed-in/net-
+  metering arrangement with the utility.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — removed the "Solar Panel" stat card
+  (the one showing "60W" rated capacity) and dropped the top row from 3 to 2 cards; mounted
+  the three new components (Live Operations Simulation and ATS Changeover Simulation after
+  Smart Power Recommendation; Energy Savings & Grid Sell-Back after the Battery Charge/
+  Discharge chart).
+
+Verified: `npx eslint` clean, `npx vite build` succeeds. Drove headless Chromium against the
+running dev server — confirmed "60W" no longer appears, the live simulation's battery %/kW
+draw actually tick upward between two screenshots taken 3s apart, the ATS diagram renders
+with the active source highlighted, and the savings card's numbers match the underlying
+mock stats (4.12 kWh solar × 78% self-consumption = 3.21 kWh saved). No console errors.
+
+
+## 2026-08-26 — New "Aerial View" page (satellite map of the farm)
+
+- irrigation-dashboard/src/pages/AerialView.jsx — new: Leaflet map centered on the farm
+  (17°49'47.9"S 31°01'39.8"E) using free Esri World Imagery satellite tiles, with an
+  OpenStreetMap layer option, a marker + adjustable-radius boundary circle, and an info
+  panel noting the upgrade path to real Google Earth Engine imagery (NDVI/change-over-time)
+  once a GCP project + Earth Engine service account are available (needs a backend endpoint
+  to serve authenticated EE tiles — not wired up yet, no credentials provided).
+- irrigation-dashboard/src/App.jsx — imported AerialView, added "aerial-view" case.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — added "Aerial View" nav item
+  (Satellite icon) between Crop Health (AI) and Data & Reports.
+- irrigation-dashboard/src/components/layout/TopBar.jsx — added PAGE_META entry for
+  "aerial-view" (title/subtitle shown in the header).
+- irrigation-dashboard/package.json / package-lock.json — added `leaflet` and
+  `react-leaflet` dependencies.
+
+Verified: started the FastAPI backend + Vite dev server, drove headless Chromium
+(Playwright) to the new page, confirmed the map renders real satellite imagery at the
+given coordinates with no console errors, then stopped both dev processes.
+
+
+## 2026-08-26 — Removed "Automated Capture (Planned)" section from Crop Health AI
+
+- irrigation-dashboard/src/pages/CropHealth.jsx — removed the ESP32-CAM automated-capture
+  planning section (bottom card describing scheduled per-bed captures + the same diagnosis
+  pipeline run automatically); the manual upload/diagnose tool above is unchanged. Dropped
+  the now-unused `Camera` icon import.
+
+Verified: `npx eslint` clean.
+
+
+## 2026-08-26 — Smart Power Recommendation concept card (Energy Management)
+
+- irrigation-dashboard/src/components/energy/SmartPowerRecommendation.jsx — new: proposes
+  a best power source (Solar/Battery/Grid) with a one-line rationale, factoring in weather
+  outlook (via the existing useLiveWeather hook -> solar potential score), grid stability,
+  and current battery reserve. Grid stability has no backend telemetry yet, so it's
+  simulated client-side (slow time-of-day wave) and clearly labeled "Concept" / "Simulated"
+  in the UI, with a note on what real data source would replace it (voltage variance/outage
+  log from the ATS). This is a frontend-only concept per explicit user choice, not wired to
+  a new backend field.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — mounted the new card, placed right
+  after the top 3-stat row (Active Source / Battery / Solar) and before the power-source
+  timeline.
+
+Verified: `npx eslint` clean on both files, `npx vite build` succeeds.
+
+
+## 2026-08-25 — Removed Solar Tracker Digital Twin entirely; added a Battery Charge/Discharge bar chart
+
+- Deleted: irrigation-dashboard/src/components/energy/SolarTrackerDigitalTwin.jsx,
+  irrigation-dashboard/src/components/energy/digital-twin/ (TrackerScene.jsx,
+  PowerGraph.jsx, EnergyFlow.jsx), irrigation-dashboard/src/hooks/useSolarTrackerSimulation.js,
+  irrigation-dashboard/src/lib/solarPosition.js. Removed the `suncalc` dependency
+  (npm uninstall) since it was added solely for this feature.
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — removed the 4-tab structure
+  (Overview / Solar Tracker / Energy Analytics / Energy Settings) added earlier today;
+  back to a single flowing page (top 3 cards, power-source timeline, charts, stats) since
+  tabs existed only to house the tracker feature and its settings summary, both now gone.
+- irrigation-dashboard/src/components/energy/BatteryFlowChart.jsx — new: bar chart of
+  estimated battery charge/discharge per hour (green bars up = charging while solar is
+  the active source, amber bars down = discharging while running off battery, flat at
+  zero on grid power), diverging around a zero reference line. No hourly charge/discharge
+  magnitude exists in the backend — derived from the existing per-hour active-source label
+  (energyHistory.hourly) already used elsewhere on this page, not a new backend endpoint.
+
+Reverts today's earlier Solar Tracker Digital Twin work (SunCalc integration, 3/4
+perspective scene, exhibition mode, etc.) per explicit request — that work is gone from
+the working tree, not just hidden. Verified in-browser (Playwright): zero console errors,
+tabs gone, battery bars render correctly split above/below zero by hour.
+
+
+## 2026-08-25 — Digital twin: 3/4 perspective view, dropped Physical Reference card
+
+- irrigation-dashboard/src/components/energy/digital-twin/TrackerScene.jsx — replaced the
+  flat side-elevation silhouette (panel drawn as a thin rotating blade, camera looking
+  straight along the tracker's rotation axis) with a real 3/4 "hero shot" view: the panel
+  is now modeled as an actual rectangle in 3D and projected through a fixed-angle
+  orthographic camera (yaw + pitch, no perspective divide), so you see its face and cell
+  grid — not just its edge — as it tilts through the day. Fixed a follow-on bug from that
+  change: the pole is a near-vertical line, and an objectBoundingBox gradient on a
+  ~zero-width stroke bbox rendered invisible in-browser (compiled fine, only showed up in
+  a Playwright screenshot) — switched it to a solid stroke color.
+- irrigation-dashboard/src/components/energy/SolarTrackerDigitalTwin.jsx — removed the
+  "Physical Reference" card (thumbnail photo + caption) per user request now that the
+  scene itself reads as a real tracker rather than needing the photo as a crutch.
+- irrigation-dashboard/public/images/solar-tracker-reference.jpg — deleted, no longer
+  referenced anywhere.
+
+Re-verified in-browser (Playwright) after both changes — cropped screenshots of the SVG
+scene alone at noon and 7 AM confirm the pole now visibly grounds the panel, and the
+daily-preview strip's 6 thumbnails all render correctly at small size. Zero console
+errors, lint clean.
+
+
+## 2026-08-25 — Solar Tracker Digital Twin (Energy Management)
+
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — restructured into 4 tabs
+  (Overview / Solar Tracker / Energy Analytics / Energy Settings); Overview keeps the
+  original top cards + power-source timeline, Analytics keeps the original consumption
+  chart + stats grid, Settings is new (read-only tracker config summary). Removed the
+  old inline `<SolarTrackerCard />`, superseded by the new tab.
+- irrigation-dashboard/src/components/energy/SolarTrackerCard.jsx — deleted, superseded
+- irrigation-dashboard/src/components/energy/SolarTrackerDigitalTwin.jsx — new: the main
+  "Solar Tracker" tab. Play/pause/reset/step timeline (06:00-18:00), 1x/5x/10x/50x speed,
+  live metric cards (solar power, energy today, battery, tracker efficiency, panel angle,
+  tracking accuracy), tracker status panel, 6-shot daily preview strip, "Exhibition Mode"
+  (enlarged single-column layout), "Run Full Day Simulation" (paced to ~45s, ends with a
+  dismissible summary banner). Explicit "🟢 Simulation Mode" badge + disclaimer text
+  throughout — no tracker hardware exists yet, this is a digital twin, not telemetry.
+- irrigation-dashboard/src/components/energy/digital-twin/TrackerScene.jsx — new: 2D SVG
+  scene (sky color-graded by sun elevation, full-day sun-path arc, glowing sun, ground
+  shadow, single-axis tracker rotating around a pole-top pivot). Deliberately SVG/CSS
+  rather than Three.js/WebGL — a single-axis E-W tracker is fully legible from a side
+  view, and this stays light enough for a normal exhibition laptop with no new
+  dependency (project had no three.js/@react-three/fiber before this).
+- irrigation-dashboard/src/components/energy/digital-twin/PowerGraph.jsx — new: tracker
+  vs. fixed-panel power curve (Recharts, already a dependency) with a marker at the
+  current simulated time.
+- irrigation-dashboard/src/components/energy/digital-twin/EnergyFlow.jsx — new: Solar
+  Tracker -> Controller -> Battery -> Irrigation Pump flow diagram.
+- irrigation-dashboard/src/hooks/useSolarTrackerSimulation.js — new: the simulation
+  clock (rAF-driven, two paced modes: normal play and the timed full-day run) and
+  tracker/fixed energy accumulation.
+- irrigation-dashboard/src/lib/solarPosition.js — new: real solar-position equations
+  (elevation/azimuth) for Harare, Zimbabwe on a fixed reference date — an actual
+  computed astronomical curve, not live data and not a hardcoded shape. Derives the
+  tracker's power curve, a comparison fixed-panel curve, and the expected daily
+  tracker-vs-fixed gain (%) shown as "Tracker Efficiency" from that same curve.
+- irrigation-dashboard/public/images/solar-tracker-reference.jpg — new, user-supplied
+  photo of the physical tracker prototype; shown as a labeled reference card, not used
+  as a rotating texture (the panel is reconstructed as SVG so it can actually rotate).
+
+Verified in a real browser (Playwright, headless Chromium) rather than just compiling:
+navigated every tab, scrubbed the timeline, played/paused, ran Exhibition Mode and Run
+Full Day Simulation end-to-end, zero console errors. Two React 19 lint errors caught by
+`eslint-plugin-react-hooks` (setState-in-effect for the summary banner's dismiss state;
+reading a ref during render for the exhibition-run flag) were fixed before finishing —
+see the hook and component for the corrected patterns.
+
+
 ## 2026-08-25 — Prepped mobile app + backend for a remote (non-LAN) APK download
 
 - render.yaml — new: Render Blueprint for backend/ (FastAPI), free-tier web service,

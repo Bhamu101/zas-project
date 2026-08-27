@@ -14,12 +14,20 @@ interface FarmState {
   setSelectedBedId: (id: number) => void;
 }
 
+const DEFAULT_PROFILE: FarmProfile = {
+  farmName: 'My Farm',
+  location: 'Norton, Zimbabwe',
+  farmSizeHectares: '—',
+  mainCrop: 'Rape / Covo',
+  irrigationType: 'Drip / Solenoid Valve',
+};
+
 export const useFarmStore = create<FarmState>()(
   persist(
     (set) => ({
-      profile: null,
+      profile: DEFAULT_PROFILE,
       cropId: DEFAULT_CROP_ID,
-      isSetupComplete: false,
+      isSetupComplete: true,
       selectedBedId: 1,
       completeSetup: (profile, cropId) => set({ profile, cropId, isSetupComplete: true }),
       setSelectedBedId: (id) => set({ selectedBedId: id }),

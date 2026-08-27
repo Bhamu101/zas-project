@@ -24,16 +24,26 @@ export class ApiError extends Error {
   }
 }
 
+// Generous enough to cover a Render free-tier cold start (usually
+// 30-60s to wake from sleep) without leaving the UI hanging forever
+// if the backend is genuinely unreachable.
+const REQUEST_TIMEOUT_MS = 60000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = getApiBaseUrl();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(`${baseUrl}${path}`, {
       headers: { 'Content-Type': 'application/json' },
       ...init,
+      signal: controller.signal,
     });
   } catch {
     throw new ApiError(`Could not reach the farm backend at ${baseUrl}`);
+  } finally {
+    clearTimeout(timeout);
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null);

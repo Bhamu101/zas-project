@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Droplets, Play, Info, MoreVertical, ChevronRight, Calendar, Clock,
-  TrendingUp, TrendingDown, Loader2, AlertTriangle,
+  TrendingUp, TrendingDown, Loader2,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import ProgressBar from "../components/dashboard/ProgressBar";
+import { bedTargets } from "../lib/cropTargets";
 
-const TRIGGER_URL = (bedId) => `http://localhost:8021/api/irrigation/trigger/${bedId}`;
+// Client-side irrigation simulation tuning.
+const SIM_TICK_MS = 450;          // how often the moisture reading updates
+const SIM_STEP_PCT = 1.4;         // average % gained per tick
+const SIM_TARGET_GAIN = 24;       // total % the bed climbs once triggered
 
 const STATE_HEX = { optimal: "#16a34a", "needs-water": "#eab308", critical: "#ef4444" };
 const STATE_LABEL = { optimal: "Optimal", "needs-water": "Needs Water", critical: "Critical" };
@@ -29,28 +33,56 @@ function DeltaTag({ value, goodDirection = "down" }) {
   );
 }
 
-export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview, onIrrigationTriggered }) {
+function stateForVwc(vwc, t) {
+  if (vwc < t.vwcTrigger) return "critical";
+  if (vwc < t.vwcOptimalMin) return "needs-water";
+  return "optimal";
+}
+
+export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview }) {
   const [mode, setMode] = useState("automatic");
-  const [triggeringBedId, setTriggeringBedId] = useState(null);
-  const [triggerError, setTriggerError] = useState(null);
+  // Per-bed live simulation: { [bedId]: { vwc, state, running } }
+  const [sim, setSim] = useState({});
+  const timersRef = useRef({});
 
-  const targetRange = systemInfo ? `${systemInfo.vwcOptimalMin}% - ${systemInfo.vwcOptimalMax}%` : "40% - 60%";
+  // Clear any running intervals when the page unmounts.
+  useEffect(() => () => {
+    Object.values(timersRef.current).forEach(clearInterval);
+  }, []);
 
-  async function handleTrigger(bedId) {
-    setTriggeringBedId(bedId);
-    setTriggerError(null);
-    try {
-      const res = await fetch(TRIGGER_URL(bedId), { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Server responded ${res.status}`);
-      }
-      await onIrrigationTriggered?.();
-    } catch (err) {
-      setTriggerError(err.message || "Could not reach the backend.");
-    } finally {
-      setTriggeringBedId(null);
-    }
+  function handleTrigger(bedId) {
+    const bed = beds.find((b) => b.id === bedId);
+    if (!bed) return;
+
+    const t = bedTargets(bed, systemInfo);
+    const start = sim[bedId]?.vwc ?? bed.vwc;
+    // Aim for the middle of this crop's optimal band, but always at least a
+    // meaningful bump above where the bed started.
+    const bandMid = (t.vwcOptimalMin + t.vwcOptimalMax) / 2;
+    const target = Math.min(100, Math.max(start + SIM_TARGET_GAIN, bandMid));
+
+    clearInterval(timersRef.current[bedId]);
+    setSim((prev) => ({
+      ...prev,
+      [bedId]: { vwc: start, state: stateForVwc(start, t), running: true },
+    }));
+
+    timersRef.current[bedId] = setInterval(() => {
+      setSim((prev) => {
+        const cur = prev[bedId]?.vwc ?? start;
+        const step = SIM_STEP_PCT * (0.6 + Math.random() * 0.8); // slight jitter
+        const next = Math.min(target, cur + step);
+        const done = next >= target - 0.05;
+        if (done) {
+          clearInterval(timersRef.current[bedId]);
+          delete timersRef.current[bedId];
+        }
+        return {
+          ...prev,
+          [bedId]: { vwc: next, state: stateForVwc(next, t), running: !done },
+        };
+      });
+    }, SIM_TICK_MS);
   }
 
   const overviewTiles = irrigationOverview && [
@@ -100,17 +132,24 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {beds.map((bed) => {
-          const s = stateStyles[bed.state] || stateStyles.optimal;
+          const live = sim[bed.id];
+          const vwc = live?.vwc ?? bed.vwc;
+          const state = live?.state ?? bed.state;
+          const running = !!live?.running;
+          const t = bedTargets(bed, systemInfo);
+          const s = stateStyles[state] || stateStyles.optimal;
           return (
             <div key={bed.id} className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-ink">{bed.name}</h3>
+                <h3 className="text-lg font-bold text-ink whitespace-nowrap">
+                  {bed.name}{t.crop ? `: ${t.crop}` : ""}
+                </h3>
                 <div className="flex items-center gap-1">
                   <span
                     className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.badgeText}`}
-                    style={{ backgroundColor: `${STATE_HEX[bed.state] || STATE_HEX.optimal}1a` }}
+                    style={{ backgroundColor: `${STATE_HEX[state] || STATE_HEX.optimal}1a` }}
                   >
-                    {STATE_LABEL[bed.state] || STATE_LABEL.optimal}
+                    {STATE_LABEL[state] || STATE_LABEL.optimal}
                   </span>
                   <button className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-card transition-colors">
                     <MoreVertical size={15} />
@@ -119,16 +158,22 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
               </div>
 
               <div className="flex items-center gap-2 mb-1">
-                <Droplets size={16} className="text-muted" />
-                <p className="text-3xl font-bold text-ink">{bed.vwc}%</p>
+                <Droplets size={16} className={running ? "text-brand animate-pulse" : "text-muted"} />
+                <p className="text-3xl font-bold text-ink tabular-nums">{Math.round(vwc)}%</p>
               </div>
-              <p className="text-xs text-muted mb-2">Soil Moisture</p>
+              <p className="text-xs text-muted mb-2">
+                Soil Moisture{running && <span className="text-brand font-semibold"> · irrigating…</span>}
+              </p>
 
-              <ProgressBar percent={bed.vwc} color={s.bar} />
+              <ProgressBar percent={vwc} color={s.bar} />
 
               <div className="flex items-center gap-1 text-xs text-muted mt-2 mb-4">
                 <ChevronRight size={12} />
-                <span>Target Range: {targetRange}</span>
+                <span>
+                  {t.crop ? `${t.crop} target: ` : "Target range: "}
+                  {t.vwcOptimalMin}% - {t.vwcOptimalMax}%
+                  <span className="text-muted/70"> · trigger &lt; {t.vwcTrigger}%</span>
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-4 pt-3 border-t border-gray-100">
@@ -148,17 +193,17 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
 
               <button
                 onClick={() => handleTrigger(bed.id)}
-                disabled={mode === "automatic" || triggeringBedId === bed.id}
+                disabled={mode === "automatic" || running}
                 className={`w-full flex items-center justify-center gap-2 text-sm font-bold rounded-xl py-3 transition-colors ${
-                  mode === "automatic" || triggeringBedId === bed.id
+                  mode === "automatic" || running
                     ? "bg-card text-muted cursor-not-allowed"
                     : "bg-brand text-white hover:bg-brand-dark"
                 }`}
               >
-                {triggeringBedId === bed.id ? (
+                {running ? (
                   <>
                     <Loader2 size={15} className="animate-spin" />
-                    Triggering…
+                    Irrigating… {Math.round(vwc)}%
                   </>
                 ) : (
                   <>
@@ -171,13 +216,6 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
           );
         })}
       </div>
-
-      {triggerError && (
-        <div className="flex items-center gap-2 text-xs text-red-600 rounded-xl px-4 py-3 bg-surface border border-red-100">
-          <AlertTriangle size={14} className="shrink-0" />
-          Could not trigger irrigation: {triggerError}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
         <div className="lg:col-span-2 bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
@@ -224,15 +262,18 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
             </div>
             <div className="flex-1 flex gap-1 rounded-xl overflow-hidden min-h-[96px]">
               {beds.map((bed) => {
-                const hex = STATE_HEX[bed.state] || STATE_HEX.optimal;
+                const live = sim[bed.id];
+                const vwc = live?.vwc ?? bed.vwc;
+                const state = live?.state ?? bed.state;
+                const hex = STATE_HEX[state] || STATE_HEX.optimal;
                 return (
                   <div key={bed.id} className="flex-1 flex items-center justify-center" style={{ backgroundColor: `${hex}1a` }}>
                     <div
-                      className="w-11 h-11 rounded-full bg-white shadow flex flex-col items-center justify-center border-2"
+                      className={`w-11 h-11 rounded-full bg-white shadow flex flex-col items-center justify-center border-2 ${live?.running ? "animate-pulse" : ""}`}
                       style={{ borderColor: hex }}
                     >
                       <span className="text-[10px] font-bold text-ink leading-none">{bed.id}</span>
-                      <span className="text-[10px] font-bold text-ink leading-none mt-0.5">{bed.vwc}%</span>
+                      <span className="text-[10px] font-bold text-ink leading-none mt-0.5 tabular-nums">{Math.round(vwc)}%</span>
                     </div>
                   </div>
                 );

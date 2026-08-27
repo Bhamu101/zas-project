@@ -18,11 +18,9 @@ import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, FontSize, FontWeight, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
-import { useFarmStore } from '@/store/farmStore';
 
 export default function LoginScreen() {
   const login = useAuthStore((s) => s.login);
-  const isSetupComplete = useFarmStore((s) => s.isSetupComplete);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +31,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       await login(loginEmail ?? email ?? 'farmer@agri-intelligence.app', password);
-      router.replace(isSetupComplete ? '/(tabs)' : '/farm-setup');
+      router.replace('/(tabs)');
     } finally {
       setSubmitting(false);
     }

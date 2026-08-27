@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, Droplets, Zap, Sprout, BrainCircuit, BarChart3, Bell, Settings, Bot, Leaf,
+  LayoutDashboard, Droplets, Zap, Sprout, BrainCircuit, BarChart3, Bell, Settings, Bot, Leaf, Satellite,
 } from "lucide-react";
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { id: "energy", icon: Zap, label: "Energy Management" },
   { id: "beds", icon: Sprout, label: "Bed Monitoring" },
   { id: "crop-health", icon: BrainCircuit, label: "Crop Health (AI)" },
+  { id: "aerial-view", icon: Satellite, label: "Aerial View" },
   { id: "reports", icon: BarChart3, label: "Data & Reports" },
   { id: "alerts", icon: Bell, label: "Alerts & Notifications" },
   { id: "settings", icon: Settings, label: "System Settings" },

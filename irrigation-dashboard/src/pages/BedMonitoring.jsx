@@ -3,25 +3,29 @@ import {
   Clock, MapPin,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceArea } from "recharts";
+import { bedTargets } from "../lib/cropTargets";
 
 const STATE_STYLE = {
   critical: {
     hex: "#ef4444", badgeText: "text-red-600", label: "Critical",
     icon: AlertTriangle, message: "Moisture below trigger threshold",
     actionLabel: "Start Irrigation", actionIcon: Droplet, filled: true,
-    recommend: (vwc) => `Moisture is critically low at ${vwc}%. Start irrigation immediately.`,
+    recommend: (vwc, t) =>
+      `Moisture is critically low at ${vwc}% — below the ${t.crop || "crop"} trigger of ${t.vwcTrigger}%. Start irrigation immediately.`,
   },
   "needs-water": {
     hex: "#f59e0b", badgeText: "text-amber-700", label: "Needs Water",
     icon: AlertTriangle, message: "Moisture below optimal range",
     actionLabel: "Monitor", actionIcon: Eye, filled: false,
-    recommend: () => "Moisture is below the optimal range. Consider irrigation in the next cycle.",
+    recommend: (vwc, t) =>
+      `At ${vwc}%, moisture is below the ${t.crop ? `${t.crop} ` : ""}optimal band (${t.vwcOptimalMin}–${t.vwcOptimalMax}%). Irrigate in the next cycle.`,
   },
   optimal: {
     hex: "#16a34a", badgeText: "text-brand-dark", label: "Optimal",
     icon: CheckCircle2, message: "Moisture within optimal range",
     actionLabel: "No Action Required", actionIcon: Check, filled: false,
-    recommend: () => "Moisture is within the optimal range. No irrigation required.",
+    recommend: (vwc, t) =>
+      `At ${vwc}%, moisture is within the ${t.crop ? `${t.crop} ` : ""}optimal band (${t.vwcOptimalMin}–${t.vwcOptimalMax}%). No irrigation required.`,
   },
 };
 
@@ -75,11 +79,14 @@ function BedCard({ bed, systemInfo, onNavigate }) {
   const s = STATE_STYLE[bed.state] || STATE_STYLE.optimal;
   const Icon = s.icon;
   const ActionIcon = s.actionIcon;
+  const t = bedTargets(bed, systemInfo);
 
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-ink">{bed.name}</h3>
+        <h3 className="text-xl font-bold text-ink whitespace-nowrap">
+          {bed.name}{t.crop ? `: ${t.crop}` : ""}
+        </h3>
         <span
           className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${s.badgeText}`}
           style={{ backgroundColor: `${s.hex}1a` }}
@@ -94,16 +101,12 @@ function BedCard({ bed, systemInfo, onNavigate }) {
       </div>
       <p className="text-3xl font-bold mb-1" style={{ color: s.hex }}>{bed.vwc}%</p>
 
-      {systemInfo && (
-        <RangeBar vwc={bed.vwc} trigger={systemInfo.vwcTrigger} optMin={systemInfo.vwcOptimalMin} optMax={systemInfo.vwcOptimalMax} color={s.hex} />
-      )}
+      <RangeBar vwc={bed.vwc} trigger={t.vwcTrigger} optMin={t.vwcOptimalMin} optMax={t.vwcOptimalMax} color={s.hex} />
 
-      {systemInfo && (
-        <div className="flex items-center justify-between text-xs text-muted mt-3 pt-3 border-t border-gray-100">
-          <span>Optimal range: {systemInfo.vwcOptimalMin}% - {systemInfo.vwcOptimalMax}%</span>
-          <span>Trigger: &lt; {systemInfo.vwcTrigger}%</span>
-        </div>
-      )}
+      <div className="flex items-center justify-between text-xs text-muted mt-3 pt-3 border-t border-gray-100">
+        <span>{t.crop ? `${t.crop} optimal` : "Optimal range"}: {t.vwcOptimalMin}% - {t.vwcOptimalMax}%</span>
+        <span>Trigger: &lt; {t.vwcTrigger}%</span>
+      </div>
 
       <div className="flex items-center justify-between mt-3">
         <span className="flex items-center gap-1.5 text-xs text-muted">
@@ -154,15 +157,19 @@ function MoistureTrendChart({ beds, systemInfo }) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
-              {systemInfo && (
-                <ReferenceArea
-                  y1={systemInfo.vwcOptimalMin}
-                  y2={systemInfo.vwcOptimalMax}
-                  fill="#16a34a"
-                  fillOpacity={0.08}
-                  strokeOpacity={0}
-                />
-              )}
+              {beds.map((b) => {
+                const bt = bedTargets(b, systemInfo);
+                return (
+                  <ReferenceArea
+                    key={`band-${b.id}`}
+                    y1={bt.vwcOptimalMin}
+                    y2={bt.vwcOptimalMax}
+                    fill={STATE_STYLE[b.state]?.hex || STATE_STYLE.optimal.hex}
+                    fillOpacity={0.06}
+                    strokeOpacity={0}
+                  />
+                );
+              })}
               <XAxis dataKey="hour" tickLine={false} axisLine={false} tick={{ fill: "#6b7280", fontSize: 10 }} interval={1} />
               <YAxis domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} tick={{ fill: "#6b7280", fontSize: 10 }} />
               {beds.map((b) => (
@@ -184,21 +191,23 @@ function MoistureTrendChart({ beds, systemInfo }) {
         {beds.map((b) => (
           <div key={b.id} className="flex items-center gap-1.5 text-xs">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATE_STYLE[b.state]?.hex }} />
-            <span className="text-muted">{b.name}</span>
+            <span className="text-muted">
+              {b.name}{bedTargets(b, systemInfo).crop ? `: ${bedTargets(b, systemInfo).crop}` : ""}
+            </span>
             <span className="font-bold text-ink">{b.vwc}%</span>
           </div>
         ))}
       </div>
       {systemInfo && (
         <p className="text-[11px] text-muted mt-2 text-center shrink-0">
-          Shaded band indicates optimal range ({systemInfo.vwcOptimalMin}% - {systemInfo.vwcOptimalMax}%)
+          Shaded bands show each crop's optimal moisture range
         </p>
       )}
     </div>
   );
 }
 
-function RecommendedActions({ beds, onNavigate }) {
+function RecommendedActions({ beds, systemInfo, onNavigate }) {
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3 shrink-0">
@@ -209,13 +218,16 @@ function RecommendedActions({ beds, onNavigate }) {
         {beds.map((bed) => {
           const s = STATE_STYLE[bed.state] || STATE_STYLE.optimal;
           const Icon = s.icon;
+          const t = bedTargets(bed, systemInfo);
           return (
             <div key={bed.id} className="rounded-xl p-3 border-l-4" style={{ borderColor: s.hex, backgroundColor: `${s.hex}0d` }}>
               <div className="flex items-start gap-2">
                 <Icon size={15} className="shrink-0 mt-0.5" style={{ color: s.hex }} />
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-ink">{bed.name}</p>
-                  <p className="text-xs text-muted mt-0.5 leading-snug">{s.recommend(bed.vwc)}</p>
+                  <p className="text-sm font-bold text-ink">
+                    {bed.name}{t.crop ? `: ${t.crop}` : ""}
+                  </p>
+                  <p className="text-xs text-muted mt-0.5 leading-snug">{s.recommend(bed.vwc, t)}</p>
                 </div>
               </div>
             </div>
@@ -301,7 +313,7 @@ export default function BedMonitoring({ beds = [], systemInfo, bedActivity = [],
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
         <MoistureTrendChart beds={beds} systemInfo={systemInfo} />
-        <RecommendedActions beds={beds} onNavigate={onNavigate} />
+        <RecommendedActions beds={beds} systemInfo={systemInfo} onNavigate={onNavigate} />
         <RecentActivity items={bedActivity} onNavigate={onNavigate} />
       </div>
     </div>

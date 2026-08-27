@@ -43,7 +43,6 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
-          <Stack.Screen name="farm-setup" />
           <Stack.Screen name="(tabs)" />
         </Stack>
       </ThemeProvider>

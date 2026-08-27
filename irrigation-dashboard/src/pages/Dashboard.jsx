@@ -19,9 +19,17 @@ const HERO_IMAGES = [
   "/images/hero-harvest.jpg",
   "/images/hero-sunset.jpg",
   "/images/hero-pivot.jpg",
-  "/images/hero-solar.jpg",
+  "/images/hero-solartracker.jpg",
 ];
 const SLIDESHOW_INTERVAL_MS = 6500;
+
+// Cycled alongside the hero photos (by index, wrapping) so the headline
+// crossfades in sync with the slideshow instead of sitting static.
+const CINEMA_TITLES = [
+  { line1: "Welcome to", line2: "Agri-Intelligence" },
+  { line1: "Welcome to", line2: "Isivuno Esihlakaniphileyo" },
+  { line1: "Welcome to", line2: "Goho Rakangwara" },
+];
 
 function clamp(v, min = 0, max = 1) {
   return Math.min(max, Math.max(min, v));
@@ -114,8 +122,14 @@ export default function Dashboard() {
     };
   }, []);
 
+  const activeTitle = CINEMA_TITLES[activeImage % CINEMA_TITLES.length];
+
   return (
-    <section ref={heroRef} className="cinema-hero" aria-label="Welcome to Goho Rakangwara">
+    <section
+      ref={heroRef}
+      className="cinema-hero"
+      aria-label={`${activeTitle.line1} ${activeTitle.line2}`}
+    >
       <div className="cinema-stage">
         <div ref={worldRef} className="cinema-world">
           <div className="cinema-scene" aria-hidden="true" />
@@ -136,11 +150,19 @@ export default function Dashboard() {
           <div className="cinema-shade" aria-hidden="true" />
 
           <div className="cinema-copy">
-            <h1 className="cinema-title">
-              Welcome to
-              <br />
-              Goho Rakangwara
-            </h1>
+            <div className="cinema-title-stack">
+              {CINEMA_TITLES.map((title, i) => (
+                <h1
+                  key={title.line2}
+                  className="cinema-title"
+                  style={{ "--layer-opacity": i === activeImage % CINEMA_TITLES.length ? 1 : 0 }}
+                >
+                  {title.line1}
+                  <br />
+                  {title.line2}
+                </h1>
+              ))}
+            </div>
             <p className="cinema-tagline">Powering Growth — Where Agriculture, Technology and Commerce Converge</p>
           </div>
         </div>

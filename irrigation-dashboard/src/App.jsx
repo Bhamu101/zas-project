@@ -7,6 +7,7 @@ import IrrigationControl from "./pages/IrrigationControl";
 import EnergyManagement from "./pages/EnergyManagement";
 import BedMonitoring from "./pages/BedMonitoring";
 import CropHealth from "./pages/CropHealth";
+import AerialView from "./pages/AerialView";
 import DataReports from "./pages/DataReports";
 import AlertsPage from "./pages/AlertsPage";
 import SystemSettings from "./pages/SystemSettings";
@@ -15,7 +16,7 @@ import { useDashboardData } from "./hooks/useDashboardData";
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { data, error, loading, refetch } = useDashboardData();
+  const { data, error, loading } = useDashboardData();
 
   if (loading) {
     return (
@@ -43,7 +44,6 @@ function App() {
           beds={data.beds}
           systemInfo={data.systemInfo}
           irrigationOverview={data.irrigationOverview}
-          onIrrigationTriggered={refetch}
         />
       );
       case "energy": return (
@@ -63,6 +63,7 @@ function App() {
         />
       );
       case "crop-health": return <CropHealth />;
+      case "aerial-view": return <AerialView />;
       case "reports": return <DataReports seasonSummary={data.seasonSummary} dataReports={data.dataReports} />;
       case "alerts": return <AlertsPage alerts={data.alerts} />;
       case "settings": return <SystemSettings systemInfo={data.systemInfo} />;

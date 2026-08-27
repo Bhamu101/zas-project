@@ -9,7 +9,6 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
-import { useFarmStore } from '@/store/farmStore';
 
 const BENEFITS = [
   { icon: Droplets, label: 'Save Water' },
@@ -19,18 +18,15 @@ const BENEFITS = [
 
 export default function SplashScreen() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const isSetupComplete = useFarmStore((s) => s.isSetupComplete);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && isSetupComplete) {
+    if (isAuthenticated) {
       router.replace('/(tabs)');
-    } else if (isAuthenticated && !isSetupComplete) {
-      router.replace('/farm-setup');
     } else {
       setChecked(true);
     }
-  }, [isAuthenticated, isSetupComplete]);
+  }, [isAuthenticated]);
 
   if (!checked) return <View style={styles.container} />;
 

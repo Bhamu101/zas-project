@@ -3,13 +3,11 @@ import {
   Power, Battery, Sun, Zap, BatteryCharging, Gauge, Leaf, TrendingUp, TrendingDown, Info,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
-import SolarTrackerCard from "../components/energy/SolarTrackerCard";
-
-const sourceIconMap = { solar: Sun, battery: Battery, grid: Zap };
-const sourceLabelMap = { solar: "Solar", battery: "Battery", grid: "Grid (ZESA)" };
-const sourceColorMap = { solar: "text-amber-500", battery: "text-blue-500", grid: "text-red-500" };
-const sourceHexMap = { solar: "#f59e0b", battery: "#3b82f6", grid: "#ef4444" };
-const sourceBarMap = { solar: "bg-amber-300", battery: "bg-blue-300", grid: "bg-red-300" };
+import BatteryBars from "../components/energy/BatteryBars";
+import SmartPowerRecommendation from "../components/energy/SmartPowerRecommendation";
+import LiveOperationsSimulator from "../components/energy/LiveOperationsSimulator";
+import GridChangeoverSimulation from "../components/energy/GridChangeoverSimulation";
+import EnergySavingsCard from "../components/energy/EnergySavingsCard";
 
 const statIconMap = {
   "Solar Energy Generated": Sun,
@@ -28,20 +26,6 @@ const statColorMap = {
   "CO2 Avoided": "text-brand",
 };
 
-function buildRanges(entries) {
-  if (!entries?.length) return [];
-  const ranges = [];
-  const last = entries[entries.length - 1];
-  if (entries[0].time !== "00:00") {
-    ranges.push({ start: "00:00", end: entries[0].time, source: last.source });
-  }
-  entries.forEach((entry, i) => {
-    const end = i < entries.length - 1 ? entries[i + 1].time : "24:00";
-    ranges.push({ start: entry.time, end, source: entry.source });
-  });
-  return ranges;
-}
-
 function DeltaTag({ value, goodDirection = "up" }) {
   const isUp = value >= 0;
   const isGood = goodDirection === "up" ? isUp : !isUp;
@@ -55,10 +39,8 @@ function DeltaTag({ value, goodDirection = "up" }) {
 }
 
 export default function EnergyManagement({ kpis, energyHistory, energyOverview, onNavigate }) {
-  const [showDetailedTimeline, setShowDetailedTimeline] = useState(false);
-
-  const ranges = buildRanges(energyHistory?.today);
-  const hourly = energyHistory?.hourly || [];
+  const [liveBattery, setLiveBattery] = useState(kpis.batteryPct ?? 50);
+  const [atsSource, setAtsSource] = useState(null);
 
   const chartData = energyOverview?.powerConsumption.series.hours.map((h, i) => ({
     hour: h,
@@ -68,7 +50,7 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
             <Power size={18} className="text-amber-500" />
@@ -88,82 +70,28 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
             <Battery size={18} className="text-blue-500" />
             <p className="text-xs font-bold tracking-wide text-muted uppercase">Battery Level</p>
           </div>
-          <p className="text-3xl font-bold text-ink">{kpis.batteryPct}%</p>
-          <div className="w-full h-2 bg-card rounded-full overflow-hidden mt-3">
-            <div className="h-full bg-blue-500" style={{ width: `${kpis.batteryPct}%` }} />
-          </div>
+          <p className="text-3xl font-bold text-ink">{Math.round(liveBattery)}%</p>
+          <BatteryBars pct={liveBattery} className="mt-3" />
           {energyOverview?.battery && (
             <p className="text-xs text-muted mt-3">
               Voltage: {energyOverview.battery.voltage} V &middot; Current: {energyOverview.battery.currentA} A &middot; Temp: {energyOverview.battery.tempC}&deg;C
             </p>
           )}
         </div>
-
-        <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sun size={18} className="text-amber-500" />
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Solar Panel</p>
-          </div>
-          <p className="text-3xl font-bold text-ink">{energyOverview?.solarPanel.ratedW ?? 60}W</p>
-          <p className="text-sm text-muted mt-1">Rated capacity</p>
-          {energyOverview?.solarPanel && (
-            <p className="text-xs text-muted mt-3">
-              Voltage: {energyOverview.solarPanel.voltage} V &middot; Current: {energyOverview.solarPanel.currentA} A &middot; Efficiency: {energyOverview.solarPanel.efficiencyPct}%
-            </p>
-          )}
-        </div>
       </div>
 
-      <SolarTrackerCard />
+      <SmartPowerRecommendation batteryPct={Math.round(liveBattery)} />
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Zap size={18} className="text-brand" />
-            <h2 className="text-sm font-bold text-ink">TODAY'S POWER SOURCE TIMELINE</h2>
-          </div>
-          <button
-            onClick={() => setShowDetailedTimeline((v) => !v)}
-            className="text-xs font-bold text-brand hover:underline"
-          >
-            {showDetailedTimeline ? "Hide Detailed Timeline" : "View Full Timeline"}
-          </button>
-        </div>
+      <LiveOperationsSimulator
+        batteryPct={kpis.batteryPct}
+        irrigationStatus={kpis.irrigationStatus}
+        activeSourceLabel={atsSource ?? energyOverview?.activeSource.label ?? kpis.energySource}
+        onBatteryChange={setLiveBattery}
+      />
 
-        {!showDetailedTimeline ? (
-          <div className="flex items-center gap-2">
-            {ranges.map((r, i) => {
-              const Icon = sourceIconMap[r.source] || Sun;
-              return (
-                <div
-                  key={i}
-                  className="flex-1 text-center border border-gray-100 rounded-lg py-3"
-                  style={{ backgroundColor: `${sourceHexMap[r.source] || "#9ca3af"}1a` }}
-                >
-                  <div className="flex items-center justify-center gap-1.5 mb-1">
-                    <Icon size={14} className={sourceColorMap[r.source] || "text-muted"} />
-                    <span className="text-xs font-bold text-ink">{sourceLabelMap[r.source] || r.source}</span>
-                  </div>
-                  <p className="text-[11px] text-muted">{r.start} &ndash; {r.end}</p>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex items-end gap-0.5">
-            {hourly.map((h) => (
-              <div key={h.hour} className="flex-1 flex flex-col items-center gap-1" title={`${h.hour} — ${sourceLabelMap[h.source]}`}>
-                <div className={`w-full h-8 rounded ${sourceBarMap[h.source] || "bg-gray-200"}`} />
-                <span className="text-[9px] text-muted">{h.hour}</span>
-              </div>
-            ))}
-          </div>
-        )}
+      <GridChangeoverSimulation batteryPct={liveBattery} onSourceChange={setAtsSource} />
 
-        <p className="text-xs text-muted mt-4">
-          ATS automatically transfers between sources to ensure uninterrupted operation.
-        </p>
-      </div>
+      <EnergySavingsCard stats={energyOverview?.stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
         <div className="lg:col-span-2 bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">

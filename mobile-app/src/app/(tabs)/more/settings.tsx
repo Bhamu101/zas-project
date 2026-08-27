@@ -75,7 +75,7 @@ export default function SettingsScreen() {
         </Card>
 
         <Section title="Farm">
-          <Row label="Farm Details" value={farmProfile?.location} onPress={() => router.push('/farm-setup')} />
+          <Row label="Farm Details" value={farmProfile?.location} />
           <Row label="Crop" value={farmProfile?.mainCrop} last />
           <Row label="Irrigation Type" value={farmProfile?.irrigationType} last />
         </Section>

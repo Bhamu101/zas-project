@@ -54,29 +54,53 @@ def send_whatsapp_alert(message: str) -> None:
 # In-memory state for the demo (no database yet — resets on server restart).
 # Mutated by /api/irrigation/trigger so a manual trigger from the dashboard
 # is actually reflected the next time the frontend polls /api/dashboard.
+# Per-crop soil-moisture (VWC %) targets. These override the system-wide
+# defaults per bed. Leafy brassicas (covo, tsunga) are shallow-rooted and need
+# consistently moist soil, so they carry a higher trigger point and a higher
+# optimal band; tomato is deeper-rooted and more drought-tolerant and is run
+# slightly drier (a mild dry-down improves fruit set and reduces splitting).
+CROP_TARGETS = {
+    "Covo":   {"vwcTrigger": 32, "vwcOptimalMin": 48, "vwcOptimalMax": 68},
+    "Tsunga": {"vwcTrigger": 30, "vwcOptimalMin": 45, "vwcOptimalMax": 65},
+    "Tomato": {"vwcTrigger": 22, "vwcOptimalMin": 34, "vwcOptimalMax": 52},
+}
+
 BEDS = [
     {
-        "id": 1, "name": "Bed 1", "vwc": 18, "state": "critical",
+        "id": 1, "name": "Bed 1", "crop": "Covo", "vwc": 18, "state": "critical",
+        **CROP_TARGETS["Covo"],
         "lastIrrigation": "Today, 08:15 AM", "durationMin": 45, "waterUsedL": 2450,
         "soilTempC": 21.4, "trendVwc": [32, 30, 27, 25, 23, 21, 20, 19, 18],
         "airTempC": 27.0, "humidityPct": 58,
         "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
     },
     {
-        "id": 2, "name": "Bed 2", "vwc": 32, "state": "needs-water",
+        "id": 2, "name": "Bed 2", "crop": "Tsunga", "vwc": 38, "state": "needs-water",
+        **CROP_TARGETS["Tsunga"],
         "lastIrrigation": "Yesterday, 06:40 PM", "durationMin": 35, "waterUsedL": 1980,
-        "soilTempC": 21.8, "trendVwc": [42, 40, 38, 37, 35, 34, 33, 33, 32],
+        "soilTempC": 21.8, "trendVwc": [48, 46, 44, 43, 42, 41, 40, 39, 38],
         "airTempC": 26.5, "humidityPct": 61,
         "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
     },
     {
-        "id": 3, "name": "Bed 3", "vwc": 58, "state": "optimal",
+        "id": 3, "name": "Bed 3", "crop": "Tomato", "vwc": 44, "state": "optimal",
+        **CROP_TARGETS["Tomato"],
         "lastIrrigation": "Today, 07:50 AM", "durationMin": 40, "waterUsedL": 2150,
-        "soilTempC": 20.9, "trendVwc": [50, 53, 55, 52, 56, 59, 57, 60, 58],
+        "soilTempC": 20.9, "trendVwc": [40, 42, 45, 43, 46, 45, 44, 45, 44],
         "airTempC": 27.4, "humidityPct": 64,
         "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
     },
 ]
+
+
+def bed_state(bed):
+    """Re-derive a bed's status from its own per-crop VWC thresholds."""
+    vwc = bed["vwc"]
+    if vwc < bed.get("vwcTrigger", 25):
+        return "critical"
+    if vwc < bed.get("vwcOptimalMin", 40):
+        return "needs-water"
+    return "optimal"
 
 BED_ACTIVITY = [
     {"id": 1, "time": "09:31 AM", "title": "Bed monitoring data updated", "subtitle": "All bed sensors synchronized", "color": "brand"},
@@ -331,7 +355,7 @@ def trigger_irrigation(bed_id: int):
 
     previous_vwc = bed["vwc"]
     bed["vwc"] = min(100, bed["vwc"] + 22)
-    bed["state"] = "optimal" if bed["vwc"] >= 40 else "needs-water"
+    bed["state"] = bed_state(bed)
     bed["lastIrrigation"] = "Just now"
     bed["durationMin"] = 0
     bed["trendVwc"] = (bed.get("trendVwc", []) + [bed["vwc"]])[-9:]
@@ -406,7 +430,7 @@ def stop_irrigation(bed_id: int):
 
     if was_irrigating:
         bed["vwc"] = min(100, bed["vwc"] + 22)
-        bed["state"] = "optimal" if bed["vwc"] >= 40 else "needs-water"
+        bed["state"] = bed_state(bed)
         bed["lastIrrigation"] = "Just now"
         bed["trendVwc"] = (bed.get("trendVwc", []) + [bed["vwc"]])[-9:]
         bed["waterUsedL"] += bed["durationMin"] * 35
