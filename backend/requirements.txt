@@ -3,3 +3,7 @@ uvicorn
 google-genai
 python-dotenv
 twilio
+requests
+# Verifies Supabase Auth access tokens (ES256/RS256 via the project's JWKS).
+# The [crypto] extra pulls in `cryptography`, needed for asymmetric algorithms.
+pyjwt[crypto]

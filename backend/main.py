@@ -3,10 +3,13 @@ import json
 import os
 from datetime import datetime
 
+import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from auth import require_user
 from google import genai
 from google.genai import errors as genai_errors
 from twilio.rest import Client as TwilioClient
@@ -14,17 +17,58 @@ from twilio.base.exceptions import TwilioRestException
 
 load_dotenv()
 
+# Bed 1's ESP32 node (firmware/sensor-node/bed1-manual-irrigation.ino) exposes a
+# tiny HTTP API (/irrigate?sec=N, /stop) on the local network. Unset by default
+# so the demo keeps working with simulated moisture bumps when no hardware is
+# wired up yet; set ESP32_BASE_URL in backend/.env (e.g. http://192.168.1.42 or
+# http://irrigation.local, if mDNS resolves from wherever this backend runs)
+# once Bed 1's pump/valve are actually flashed and on the same network as this
+# process. Only Bed 1 has real hardware so far — Beds 2/3 stay simulated.
+ESP32_BASE_URL = os.environ.get("ESP32_BASE_URL", "").rstrip("/")
+ESP32_HARDWARE_BED_ID = 1
+
+
+def call_esp32(path: str, timeout: float = 5.0) -> None:
+    """Call Bed 1's ESP32 HTTP API. Raises HTTPException on failure — unlike the
+    WhatsApp alert helper, this isn't a best-effort nicety: if the physical pump
+    didn't actually respond, the caller needs to know instead of the app showing
+    "irrigating" while nothing is happening in the field.
+    """
+    url = f"{ESP32_BASE_URL}{path}"
+    try:
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not reach Bed 1's ESP32 at {ESP32_BASE_URL}: {e}",
+        )
+
 app = FastAPI(title="Smart Irrigation API")
 
-# Wildcarded deliberately: this is a no-auth/no-cookie demo API (no credentials
-# to leak), and it's now read from the web dashboard, the mobile app's web
-# build, and native fetch — plus whatever LAN IP / ngrok tunnel URL the mobile
-# app is pointed at that day, which can't be enumerated in advance.
+# CORS only constrains *browsers*. Native mobile fetch sends no Origin and is
+# unaffected either way, so this list only needs to cover the web dashboard and
+# the mobile app's web build. Extra dev origins can be added via
+# CORS_EXTRA_ORIGINS (comma-separated) without editing code — useful for a
+# tunnel URL that changes daily. Note the real access control is require_user
+# below; this just stops arbitrary web pages calling the API from a visitor's
+# browser.
+_DEFAULT_ORIGINS = [
+    "http://localhost:5173",  # Vite dev server (irrigation-dashboard)
+    "http://localhost:4173",  # Vite preview
+    "http://localhost:8081",  # Expo web dev
+    "http://localhost:19006",  # Expo web (legacy port)
+]
+_extra_origins = [
+    o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_DEFAULT_ORIGINS + _extra_origins,
+    allow_origin_regex=r"^https://.*\.(vercel\.app|netlify\.app|onrender\.com)$",
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -69,7 +113,7 @@ BEDS = [
     {
         "id": 1, "name": "Bed 1", "crop": "Covo", "vwc": 18, "state": "critical",
         **CROP_TARGETS["Covo"],
-        "lastIrrigation": "Today, 08:15 AM", "durationMin": 45, "waterUsedL": 2450,
+        "lastIrrigation": "Today, 08:15 AM", "durationMin": 1, "waterUsedL": 2450,
         "soilTempC": 21.4, "trendVwc": [32, 30, 27, 25, 23, 21, 20, 19, 18],
         "airTempC": 27.0, "humidityPct": 58,
         "pumpStatus": "OFF", "valveStatus": "CLOSED", "irrigating": False,
@@ -112,13 +156,217 @@ BED_ACTIVITY = [
 
 _next_activity_id = max(a["id"] for a in BED_ACTIVITY) + 1
 
+# ---------------------------------------------------------------------------
+# System settings
+#
+# Centralised, editable configuration for the whole rig. Persisted to a JSON
+# file next to this module so changes survive a server restart (the demo has
+# no database). The web dashboard's System Settings page reads GET /api/settings
+# and writes PUT /api/settings; every value here maps to a proper UI control on
+# that page, so nobody edits this file by hand in normal use.
+# ---------------------------------------------------------------------------
+
+FIRMWARE_VERSION = "v0.3.0-demo"
+BACKEND_VERSION = "v0.1.0"
+_STARTED_AT = datetime.now()
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "system_settings.json")
+
+DEFAULT_SETTINGS = {
+    "irrigation": {
+        "mode": "automatic",          # automatic | manual
+        "vwcTrigger": 25,             # % — irrigate below this
+        "vwcOptimalMin": 40,         # % — target band low
+        "vwcOptimalMax": 60,         # % — target band high
+        "maxDurationMin": 45,        # cap on a single cycle
+        "minIntervalMin": 30,       # enforced gap between cycles
+        "rainfallSkipEnabled": True,
+        "rainfallSkipMm": 5,        # skip a cycle if forecast/measured rain exceeds this
+    },
+    "water": {
+        "tankMinPct": 20,           # warn below this
+        "tankCriticalPct": 10,      # block irrigation below this
+        "flowThresholdLpm": 12,     # nominal expected flow
+        "minExpectedFlowLpm": 6,    # below -> suspected blockage / dry line
+        "maxExpectedFlowLpm": 20,   # above -> suspected burst / leak
+        "pressureMinBar": 1.0,
+        "pressureMaxBar": 3.5,
+        "leakDetectionEnabled": True,
+        "dryRunProtectionEnabled": True,
+        "pumpMaxRuntimeMin": 120,   # hard stop for continuous pump running
+    },
+    "energy": {
+        "powerSource": "hybrid",    # solar | battery | grid | hybrid
+        "solarPriority": True,
+        "gridBackup": True,
+        "automaticTransfer": True,
+        "lowBatteryPct": 20,
+        "criticalBatteryPct": 10,
+        "chargingPriority": "solar",  # solar | grid
+    },
+    "notifications": {
+        "events": {
+            "lowSoilMoisture": True,
+            "lowTankLevel": True,
+            "pumpFault": True,
+            "abnormalFlow": True,
+            "pressureAbnormality": True,
+            "nodeOffline": True,
+            "lowBattery": True,
+            "solarFault": True,
+            "irrigationCompleted": True,
+        },
+        "channels": {
+            # 'whatsapp' is wired to the existing Twilio helper (send_whatsapp_alert);
+            # the others are recorded here for when those transports get added.
+            "whatsapp": True,
+            "sms": False,
+            "email": False,
+            "inApp": True,
+        },
+    },
+}
+
+# Individual ESP32 nodes / sensors. Static for the demo; a real deployment would
+# populate these from node heartbeats.
+ESP32_NODES = [
+    {"id": "node-01", "name": "ESP32 Node 01", "online": True, "ip": "192.168.1.42",
+     "rssiDbm": -58, "lastComm": "12s ago", "firmware": FIRMWARE_VERSION},
+    {"id": "node-02", "name": "ESP32 Node 02", "online": True, "ip": "192.168.1.43",
+     "rssiDbm": -63, "lastComm": "9s ago", "firmware": FIRMWARE_VERSION},
+]
+SENSORS = [
+    {"id": "soil", "name": "Soil Moisture", "online": True, "lastReading": "36% VWC", "lastUpdate": "20s ago"},
+    {"id": "flow", "name": "Flow Sensor", "online": True, "lastReading": "0.0 L/min", "lastUpdate": "20s ago"},
+    {"id": "pressure", "name": "Pressure Sensor", "online": True, "lastReading": "2.1 bar", "lastUpdate": "20s ago"},
+    {"id": "tank", "name": "Tank Level Sensor", "online": True, "lastReading": "71%", "lastUpdate": "1m ago"},
+    {"id": "climate", "name": "Temperature / Humidity", "online": True, "lastReading": "27.0 C / 60%", "lastUpdate": "45s ago"},
+]
+
+MAINTENANCE_ACTIONS = {
+    "restart-nodes": "ESP32 nodes restarted",
+    "reconnect-devices": "Device reconnect sequence started",
+    "check-sensors": "Sensor health check complete — all sensors reporting",
+    "check-firmware": f"Firmware is up to date ({FIRMWARE_VERSION})",
+    "refresh-data": "System data refreshed",
+    "factory-reset": "Settings restored to factory defaults",
+    "clear-history": "Historical data cleared",
+}
+
+
+def _deep_merge(base: dict, patch: dict) -> dict:
+    out = dict(base)
+    for key, value in (patch or {}).items():
+        if isinstance(value, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], value)
+        else:
+            out[key] = value
+    return out
+
+
+def _load_settings() -> dict:
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as fh:
+                return _deep_merge(DEFAULT_SETTINGS, json.load(fh))
+        except (OSError, json.JSONDecodeError):
+            pass
+    return json.loads(json.dumps(DEFAULT_SETTINGS))  # deep copy
+
+
+def _save_settings(settings: dict) -> None:
+    try:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as fh:
+            json.dump(settings, fh, indent=2)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Could not persist settings: {e}")
+
+
+SETTINGS = _load_settings()
+
+
+def _validate_settings(s: dict) -> None:
+    """Cross-field rules the UI also enforces — second line of defence."""
+    irr, water, energy = s["irrigation"], s["water"], s["energy"]
+    errors = []
+
+    if not (0 <= irr["vwcTrigger"] < irr["vwcOptimalMin"]):
+        errors.append("VWC trigger must be below the optimal-range minimum.")
+    if not (irr["vwcOptimalMin"] < irr["vwcOptimalMax"] <= 100):
+        errors.append("Optimal VWC minimum must be below the maximum (and ≤ 100%).")
+    if irr["maxDurationMin"] <= 0 or irr["minIntervalMin"] < 0:
+        errors.append("Irrigation durations must be positive.")
+
+    if not (0 <= water["tankCriticalPct"] < water["tankMinPct"] <= 100):
+        errors.append("Tank critical level must be below the tank minimum level.")
+    if not (water["minExpectedFlowLpm"] < water["maxExpectedFlowLpm"]):
+        errors.append("Minimum expected flow must be below the maximum expected flow.")
+    if not (0 < water["pressureMinBar"] < water["pressureMaxBar"]):
+        errors.append("Minimum pressure must be below the maximum pressure.")
+    if water["pumpMaxRuntimeMin"] <= 0:
+        errors.append("Pump maximum runtime must be positive.")
+
+    if not (0 <= energy["criticalBatteryPct"] < energy["lowBatteryPct"] <= 100):
+        errors.append("Critical battery threshold must be below the low-battery threshold.")
+
+    if errors:
+        raise HTTPException(status_code=422, detail=" ".join(errors))
+
+
+def _uptime_str() -> str:
+    delta = datetime.now() - _STARTED_AT
+    days, rem = divmod(int(delta.total_seconds()), 86400)
+    hours, rem = divmod(rem, 3600)
+    minutes = rem // 60
+    if days:
+        return f"{days}d {hours}h {minutes}m"
+    if hours:
+        return f"{hours}h {minutes}m"
+    return f"{minutes}m"
+
+
+def _system_status() -> dict:
+    snapshot = get_dashboard()
+    kpis = snapshot["kpis"]
+    any_pump_on = any(b.get("pumpStatus") == "ON" for b in BEDS)
+    nodes_online = sum(1 for n in ESP32_NODES if n["online"])
+    sensors_online = sum(1 for s in SENSORS if s["online"])
+    return {
+        "online": nodes_online > 0,
+        "nodesConnected": nodes_online,
+        "nodesTotal": len(ESP32_NODES),
+        "sensorsOnline": sensors_online,
+        "sensorsTotal": len(SENSORS),
+        "pump": "running" if any_pump_on else "idle",
+        "solar": "active" if kpis["energySource"].lower() == "solar" else "standby",
+        "batteryPct": kpis["batteryPct"],
+        "tankLevelPct": snapshot["mobileExtras"]["tankLevelPct"],
+        "energySource": kpis["energySource"],
+        "lastSync": datetime.now().strftime("%d %b %Y, %I:%M %p"),
+    }
+
+
+def _settings_payload() -> dict:
+    return {
+        "settings": SETTINGS,
+        "status": _system_status(),
+        "devices": {"nodes": ESP32_NODES, "sensors": SENSORS},
+        "meta": {
+            "firmwareVersion": FIRMWARE_VERSION,
+            "backendVersion": BACKEND_VERSION,
+            "database": "in-memory (demo)",
+            "api": "connected",
+            "lastSync": datetime.now().strftime("%d %b %Y, %I:%M %p"),
+            "uptime": _uptime_str(),
+        },
+    }
+
 
 @app.get("/")
 def root():
     return {"status": "Smart Irrigation API is running"}
 
 
-@app.get("/api/dashboard")
+@app.get("/api/dashboard", dependencies=[Depends(require_user)])
 def get_dashboard():
     return {
         "systemStatus": {
@@ -339,7 +587,7 @@ def get_dashboard():
     }
 
 
-@app.post("/api/irrigation/trigger/{bed_id}")
+@app.post("/api/irrigation/trigger/{bed_id}", dependencies=[Depends(require_user)])
 def trigger_irrigation(bed_id: int):
     """Manually trigger irrigation for one bed (demo simulation, no real hardware yet).
 
@@ -377,17 +625,27 @@ def trigger_irrigation(bed_id: int):
     return {"bed": bed}
 
 
+# Hard ceiling on a single manual cycle. This is a safety interlock, not just
+# input validation: durationMin is forwarded to the ESP32 as `sec=duration*60`,
+# so an unbounded value would leave a physical pump running indefinitely. Any
+# genuinely longer watering should be several supervised cycles.
+MAX_IRRIGATION_MINUTES = 120
+
+
 class StartIrrigationRequest(BaseModel):
-    durationMin: int = 30
+    durationMin: int = Field(default=30, ge=1, le=MAX_IRRIGATION_MINUTES)
 
 
-@app.post("/api/irrigation/start/{bed_id}")
+@app.post("/api/irrigation/start/{bed_id}", dependencies=[Depends(require_user)])
 def start_irrigation(bed_id: int, req: StartIrrigationRequest):
-    """Open the mobile app's manual-control valve/pump for one bed (demo simulation).
+    """Open the mobile app's manual-control valve/pump for one bed.
 
     Pairs with /api/irrigation/stop/{bed_id}, which is what actually raises the
     bed's moisture — this endpoint just flips pump/valve state so the Irrigation
-    Control screen has something live to show while a cycle is "running".
+    Control screen has something live to show while a cycle is "running". When
+    ESP32_BASE_URL is configured and this is Bed 1, it also fires the real
+    hardware cycle (the ESP32 runs the full valve-open/pump/pump-off/valve-close
+    sequence itself for the requested duration — /stop below is for early abort).
     """
     global _next_activity_id
 
@@ -397,10 +655,19 @@ def start_irrigation(bed_id: int, req: StartIrrigationRequest):
     if bed["irrigating"]:
         raise HTTPException(status_code=409, detail=f"{bed['name']} is already irrigating")
 
+    # Already bounded to 1..MAX_IRRIGATION_MINUTES by the request model; clamped
+    # again here so this stays safe if the endpoint is ever called internally.
+    duration_min = min(max(1, req.durationMin), MAX_IRRIGATION_MINUTES)
+
+    # Call the real hardware first: if it fails, leave the bed's state exactly
+    # as it was rather than telling the app "irrigating" while nothing started.
+    if ESP32_BASE_URL and bed_id == ESP32_HARDWARE_BED_ID:
+        call_esp32(f"/irrigate?sec={duration_min * 60}")
+
     bed["pumpStatus"] = "ON"
     bed["valveStatus"] = "OPEN"
     bed["irrigating"] = True
-    bed["durationMin"] = max(1, req.durationMin)
+    bed["durationMin"] = duration_min
 
     BED_ACTIVITY.insert(0, {
         "id": _next_activity_id,
@@ -414,10 +681,14 @@ def start_irrigation(bed_id: int, req: StartIrrigationRequest):
     return {"bed": bed}
 
 
-@app.post("/api/irrigation/stop/{bed_id}")
+@app.post("/api/irrigation/stop/{bed_id}", dependencies=[Depends(require_user)])
 def stop_irrigation(bed_id: int):
     """Close the valve/pump and, if a cycle was actually running, apply the same
     moisture bump used by the quick 'trigger' action so both control paths agree.
+
+    For Bed 1 with ESP32_BASE_URL configured, this is an early-abort: the real
+    hardware already runs its own timed cycle and stops on its own, so calling
+    /stop here just cuts it short if the farmer taps Stop before that.
     """
     global _next_activity_id
 
@@ -427,6 +698,9 @@ def stop_irrigation(bed_id: int):
 
     was_irrigating = bed["irrigating"]
     previous_vwc = bed["vwc"]
+
+    if was_irrigating and ESP32_BASE_URL and bed_id == ESP32_HARDWARE_BED_ID:
+        call_esp32("/stop")
 
     if was_irrigating:
         bed["vwc"] = min(100, bed["vwc"] + 22)
@@ -457,7 +731,69 @@ def stop_irrigation(bed_id: int):
     return {"bed": bed}
 
 
-@app.post("/api/alerts/test-whatsapp")
+@app.get("/api/settings", dependencies=[Depends(require_user)])
+def get_settings():
+    """Full System Settings payload: editable config + live status + devices + meta."""
+    return _settings_payload()
+
+
+class SettingsUpdate(BaseModel):
+    # Accept a full or partial settings tree; validated by _validate_settings
+    # after merging onto the current values.
+    irrigation: dict | None = None
+    water: dict | None = None
+    energy: dict | None = None
+    notifications: dict | None = None
+
+
+@app.put("/api/settings", dependencies=[Depends(require_user)])
+def update_settings(patch: SettingsUpdate):
+    """Merge a settings patch onto the current config, validate cross-field rules,
+    persist to disk, and return the same shape as GET /api/settings."""
+    global SETTINGS
+    merged = _deep_merge(SETTINGS, patch.model_dump(exclude_none=True))
+    _validate_settings(merged)
+    SETTINGS = merged
+    _save_settings(SETTINGS)
+    return _settings_payload()
+
+
+class MaintenanceRequest(BaseModel):
+    action: str
+
+
+@app.post("/api/settings/maintenance", dependencies=[Depends(require_user)])
+def run_maintenance(req: MaintenanceRequest):
+    """Simulated maintenance / advanced actions. 'factory-reset' actually restores
+    DEFAULT_SETTINGS; the rest just report success and log to Recent Activity."""
+    global SETTINGS, _next_activity_id
+
+    if req.action not in MAINTENANCE_ACTIONS:
+        raise HTTPException(status_code=400, detail=f"Unknown maintenance action: {req.action}")
+
+    if req.action == "factory-reset":
+        SETTINGS = json.loads(json.dumps(DEFAULT_SETTINGS))
+        _save_settings(SETTINGS)
+
+    BED_ACTIVITY.insert(0, {
+        "id": _next_activity_id,
+        "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+        "title": f"Maintenance: {MAINTENANCE_ACTIONS[req.action]}",
+        "subtitle": "Triggered from System Settings",
+        "color": "blue",
+    })
+    _next_activity_id += 1
+
+    return {
+        "status": "ok",
+        "action": req.action,
+        "message": MAINTENANCE_ACTIONS[req.action],
+        "at": datetime.now().strftime("%d %b %Y, %I:%M %p"),
+        "settings": SETTINGS,
+    }
+
+
+@app.post("/api/alerts/test-whatsapp", dependencies=[Depends(require_user)])
 def test_whatsapp_alert():
     """Send a one-off WhatsApp message to confirm Twilio credentials are wired up."""
     if not all(
@@ -488,15 +824,17 @@ def test_whatsapp_alert():
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: str = Field(pattern="^(user|model|assistant|system)$")
+    content: str = Field(min_length=1, max_length=4000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
+    # Bounded so a single call can't ship an arbitrarily long "conversation"
+    # straight through to Gemini on the server's API key.
+    messages: list[ChatMessage] = Field(min_length=1, max_length=40)
 
 
-@app.post("/api/assistant/chat")
+@app.post("/api/assistant/chat", dependencies=[Depends(require_user)])
 def assistant_chat(req: ChatRequest):
     if not os.environ.get("GEMINI_API_KEY"):
         raise HTTPException(
@@ -551,13 +889,23 @@ def assistant_chat(req: ChatRequest):
     return {"reply": response.text or ""}
 
 
+# ~8 MB of decoded image. Base64 inflates by ~4/3, so cap the encoded string
+# accordingly. Without this the endpoint will happily buffer an arbitrarily
+# large body and forward it to Gemini — an easy memory- and billing-amplification
+# lever even for a signed-in user.
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_B64_CHARS = (MAX_IMAGE_BYTES * 4) // 3
+
+ALLOWED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+
+
 class CropHealthRequest(BaseModel):
-    imageBase64: str
+    imageBase64: str = Field(min_length=1, max_length=MAX_IMAGE_B64_CHARS)
     mimeType: str = "image/jpeg"
-    cropName: str | None = None
+    cropName: str | None = Field(default=None, max_length=100)
 
 
-@app.post("/api/crop-health/diagnose")
+@app.post("/api/crop-health/diagnose", dependencies=[Depends(require_user)])
 def diagnose_crop_health(req: CropHealthRequest):
     """Real vision-model plant diagnosis: farmer photographs a plant, Gemini identifies
     disease/pest/deficiency signs and returns a structured, farmer-actionable diagnosis.
@@ -571,10 +919,22 @@ def diagnose_crop_health(req: CropHealthRequest):
             detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
         )
 
+    if req.mimeType not in ALLOWED_IMAGE_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"mimeType must be one of: {', '.join(sorted(ALLOWED_IMAGE_MIME_TYPES))}",
+        )
+
     try:
-        base64.b64decode(req.imageBase64, validate=True)
+        decoded = base64.b64decode(req.imageBase64, validate=True)
     except Exception:
         raise HTTPException(status_code=400, detail="imageBase64 is not valid base64 image data.")
+
+    if len(decoded) > MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Image is too large (max {MAX_IMAGE_BYTES // (1024 * 1024)} MB).",
+        )
 
     crop_hint = f" The farmer says this is a {req.cropName} plant." if req.cropName else ""
     system_prompt = (

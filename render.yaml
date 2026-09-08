@@ -7,6 +7,16 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # Supabase project whose public JWKS is used to verify the bearer token on
+      # every /api/* request (see backend/auth.py). Not a secret — the same URL
+      # ships inside the mobile app — so it lives here rather than being set by
+      # hand in the dashboard. Without it every authenticated request 500s.
+      - key: SUPABASE_URL
+        value: https://ewseaaucyujohlepufpo.supabase.co
+      # Optional: extra browser origins for CORS, comma-separated. Native app
+      # traffic sends no Origin and is unaffected.
+      - key: CORS_EXTRA_ORIGINS
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
