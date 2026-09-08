@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  Bell, AlertOctagon, AlertTriangle, CheckCircle2, Info, Search, Download, Calendar,
+  Bell, AlertOctagon, AlertTriangle, CheckCircle2, Info, Search, Download,
   MoreVertical, Check, X,
 } from "lucide-react";
 
@@ -40,6 +40,7 @@ export default function AlertsPage({ alerts = [] }) {
   const [search, setSearch] = useState("");
   const [severityFilter, setSeverityFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [viewing, setViewing] = useState(null);
 
@@ -66,6 +67,7 @@ export default function AlertsPage({ alerts = [] }) {
   const filtered = visible
     .filter((a) => severityFilter === "all" || a.level === severityFilter)
     .filter((a) => categoryFilter === "all" || a.category === categoryFilter)
+    .filter((a) => dateFilter === "all" || splitTime(a.time).day.toLowerCase() === dateFilter)
     .filter((a) => !search || a.text.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => (STATUS[a.level]?.priority ?? 9) - (STATUS[b.level]?.priority ?? 9));
 
@@ -118,9 +120,15 @@ export default function AlertsPage({ alerts = [] }) {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <button className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink hover:bg-card transition-colors">
-            <Calendar size={15} className="text-muted" /> Date Range
-          </button>
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+          </select>
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand text-brand text-sm font-bold hover:bg-green-50 transition-colors">
             <Download size={15} /> Export
           </button>
@@ -152,26 +160,23 @@ export default function AlertsPage({ alerts = [] }) {
                   const { day, time } = splitTime(a.time);
                   const isAck = acknowledgedIds.has(a.id);
                   return (
-                    <tr key={a.id}>
-                      <td
-                        className="py-3 pr-3 rounded-l-xl"
-                        style={{ backgroundColor: isAck ? "transparent" : `${s.hex}0d` }}
-                      >
+                    <tr key={a.id} className="[&>td]:border-b [&>td]:border-gray-100">
+                      <td className="py-3 pr-3">
                         <div className="flex items-center gap-2.5">
                           <Icon size={16} className={`${s.color} shrink-0`} />
                           <span className={`font-medium text-ink ${isAck ? "opacity-60" : ""}`}>{a.text}</span>
                         </div>
                       </td>
-                      <td className="py-3 pr-3" style={{ backgroundColor: isAck ? "transparent" : `${s.hex}0d` }}>
+                      <td className="py-3 pr-3">
                         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-card text-muted whitespace-nowrap">
                           {a.category}
                         </span>
                       </td>
-                      <td className="py-3 pr-3 whitespace-nowrap" style={{ backgroundColor: isAck ? "transparent" : `${s.hex}0d` }}>
+                      <td className="py-3 pr-3 whitespace-nowrap">
                         <p className="text-ink">{time}</p>
                         <p className="text-xs text-muted">{day}</p>
                       </td>
-                      <td className="py-3 pr-3" style={{ backgroundColor: isAck ? "transparent" : `${s.hex}0d` }}>
+                      <td className="py-3 pr-3">
                         <span
                           className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${isAck ? "bg-card text-muted" : s.badgeText}`}
                           style={isAck ? undefined : { backgroundColor: `${s.hex}1a` }}
@@ -179,7 +184,7 @@ export default function AlertsPage({ alerts = [] }) {
                           {isAck ? "Acknowledged" : s.label}
                         </span>
                       </td>
-                      <td className="py-3 rounded-r-xl" style={{ backgroundColor: isAck ? "transparent" : `${s.hex}0d` }}>
+                      <td className="py-3">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setViewing(a)}

@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { useSettingsStore } from '@/store/settingsStore';
 import type { Bed, CropDiagnosis, DashboardResponse } from '@/types';
 
@@ -29,21 +30,40 @@ export class ApiError extends Error {
 // if the backend is genuinely unreachable.
 const REQUEST_TIMEOUT_MS = 60000;
 
+/** Every /api/* route requires a Supabase access token. */
+async function authHeader(): Promise<Record<string, string>> {
+  // getSession() refreshes the access token when it's expired or close to it,
+  // so this is also what keeps a long-lived app session working without the
+  // user signing in again every hour.
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
   try {
+    const auth = await authHeader();
     res = await fetch(`${baseUrl}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
       ...init,
+      headers: { 'Content-Type': 'application/json', ...auth, ...(init?.headers ?? {}) },
       signal: controller.signal,
     });
   } catch {
     throw new ApiError(`Could not reach the farm backend at ${baseUrl}`);
   } finally {
     clearTimeout(timeout);
+  }
+  if (res.status === 401) {
+    // The token was rejected and a refresh (above) didn't help — the session is
+    // genuinely dead (signed out elsewhere, user deleted, refresh expired).
+    // Clear it so the app's auth gate sends the user back to the login screen
+    // instead of looping on failed requests.
+    await supabase.auth.signOut();
+    throw new ApiError('Your session has expired. Please sign in again.', 401);
   }
   if (!res.ok) {
     const body = await res.json().catch(() => null);

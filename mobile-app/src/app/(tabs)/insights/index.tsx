@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RecommendationCard } from '@/components/dashboard/RecommendationCard';
@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
 import { CROPS } from '@/data/crops';
+import { confirmAction, notify } from '@/lib/alert';
 import { ApiError, api } from '@/services/api';
 import { getRecommendations } from '@/services/recommendationEngine';
 import { useDashboardStore } from '@/store/dashboardStore';
@@ -29,7 +30,7 @@ export default function InsightsScreen() {
   }, [weather, fetchWeather]);
 
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return <LoadingState label="Loading advice…" />;
+  if (!data) return <LoadingState variant="insights" />;
 
   const recommendations = getRecommendations(
     data.beds,
@@ -39,23 +40,17 @@ export default function InsightsScreen() {
   );
 
   async function handleStartNow(bedId: number, durationMin: number, bedName: string) {
-    Alert.alert('Start irrigation', `Run ${bedName} for ${durationMin} minutes now?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Start',
-        onPress: async () => {
-          setStartingBedId(bedId);
-          try {
-            await api.startIrrigation(bedId, durationMin);
-            await fetchNow();
-          } catch (e) {
-            Alert.alert('Could not start irrigation', e instanceof ApiError ? e.message : 'Unknown error');
-          } finally {
-            setStartingBedId(null);
-          }
-        },
-      },
-    ]);
+    confirmAction('Start irrigation', `Run ${bedName} for ${durationMin} minutes now?`, 'Start', async () => {
+      setStartingBedId(bedId);
+      try {
+        await api.startIrrigation(bedId, durationMin);
+        await fetchNow();
+      } catch (e) {
+        notify('Could not start irrigation', e instanceof ApiError ? e.message : 'Unknown error');
+      } finally {
+        setStartingBedId(null);
+      }
+    });
   }
 
   return (
@@ -130,9 +125,9 @@ const styles = StyleSheet.create({
   tabButton: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   tabButtonActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   tabButtonText: { fontSize: FontSize.body, fontFamily: FontFamily.semibold, color: Colors.textSecondary },
-  tabButtonTextActive: { color: Colors.textOnPrimary },
+  tabButtonTextActive: { color: Colors.primaryDark },
   content: { padding: Spacing.xl, paddingTop: 0, paddingBottom: Spacing.huge },
-  cropCardActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
+  cropCardActive: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md },
   cropName: { fontSize: FontSize.subtitle, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.sm },
   guideRow: { flexDirection: 'row', gap: Spacing.xl, marginBottom: Spacing.sm },
   guideValue: { fontSize: FontSize.body, fontFamily: FontFamily.bold, color: Colors.text },

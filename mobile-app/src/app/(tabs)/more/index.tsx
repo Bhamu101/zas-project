@@ -13,12 +13,13 @@ import {
   Users,
   Zap,
 } from 'lucide-react-native';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
+import { confirmAction, notify } from '@/lib/alert';
 import { useAuthStore } from '@/store/authStore';
 
 interface MenuItem {
@@ -33,21 +34,20 @@ export default function MoreScreen() {
   const logout = useAuthStore((s) => s.logout);
 
   function handleLogout() {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log out',
-        style: 'destructive',
-        onPress: () => {
-          logout();
-          router.replace('/');
-        },
+    confirmAction(
+      'Log out',
+      'Are you sure you want to log out?',
+      'Log out',
+      () => {
+        logout();
+        router.replace('/');
       },
-    ]);
+      { destructive: true }
+    );
   }
 
   function notReady(label: string) {
-    Alert.alert(label, 'This section is being built next.');
+    notify(label, 'This section is being built next.');
   }
 
   const items: MenuItem[] = [
@@ -87,12 +87,12 @@ export default function MoreScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: 'transparent' },
-  content: { padding: Spacing.xl, paddingTop: 0 },
+  content: { padding: Spacing.xl, paddingTop: 0, paddingBottom: Spacing.huge },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.primary,
     overflow: 'hidden',
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, padding: Spacing.lg },

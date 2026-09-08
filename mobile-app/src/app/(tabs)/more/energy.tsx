@@ -15,7 +15,7 @@ export default function EnergyManagementScreen() {
   const { data, error, fetchNow } = useDashboardStore();
 
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return <LoadingState label="Loading energy data…" />;
+  if (!data) return <LoadingState variant="energy" />;
 
   const { energyOverview, extendedStats, mobileExtras } = data;
   const isSolarHigh = energyOverview.activeSource.label === 'Solar' && energyOverview.solarPanel.efficiencyPct >= 85;
@@ -56,11 +56,11 @@ export default function EnergyManagementScreen() {
                     <Text style={styles.statValue}>{stat.value}</Text>
                     <View style={styles.deltaRow}>
                       {isUp ? (
-                        <TrendingUp size={12} color={isGood ? Colors.primary : Colors.critical} />
+                        <TrendingUp size={12} color={isGood ? Colors.success : Colors.critical} />
                       ) : (
-                        <TrendingDown size={12} color={isGood ? Colors.primary : Colors.critical} />
+                        <TrendingDown size={12} color={isGood ? Colors.success : Colors.critical} />
                       )}
-                      <Text style={[styles.deltaText, { color: isGood ? Colors.primary : Colors.critical }]}>
+                      <Text style={[styles.deltaText, { color: isGood ? Colors.success : Colors.critical }]}>
                         {Math.abs(stat.deltaPct)}%
                       </Text>
                     </View>
@@ -95,6 +95,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: FontSize.body, fontWeight: FontWeight.bold, color: Colors.text },
   deltaRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   deltaText: { fontSize: FontSize.caption, fontWeight: FontWeight.semibold },
-  recCard: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary },
+  recCard: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md },
   mutedText: { fontSize: FontSize.body, color: Colors.textSecondary, lineHeight: 20 },
 });

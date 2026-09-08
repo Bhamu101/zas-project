@@ -12,43 +12,158 @@
   --font-display: Tahoma, Geneva, Verdana, sans-serif;
   --font-wordmark: "Fraunces", Georgia, serif;
 
-  --color-brand: #15803d;
-  --color-brand-dark: #14532d;
-  --color-ink: #111827;
+  /* Palette: #0F0F0F ink · #C7FF2E lime accent · #2E2E2E graphite
+     #FFFFFF surface · #808080 steel. Lime is used for fills + section
+     borders in both themes; accent text uses a deepened lime on light,
+     a brightened lime on dark. Semantic tokens below are re-pointed for
+     dark mode under :root[data-theme="dark"]. */
+  --color-brand: #c7ff2e;
+  --color-brand-dark: #a3e635;
+  --color-lime: #c7ff2e;
+  --color-graphite: #2e2e2e;
+  --color-steel: #808080;
+
+  --color-ink: #0f0f0f;
   --color-muted: #6b7280;
-  --color-bg: #eef4f1;
+  --color-bg: #f5f6f8;
   --color-surface: #ffffff;
-  --color-card: #f0f5f1;
+  --color-card: #eef2e6;
+}
+
+/* ---- Dark theme ---------------------------------------------------------- */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-ink: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-bg: #0f0f0f;
+  --color-surface: #1a1a1a;
+  --color-card: #242424;
 }
 
 body {
-  position: relative;
   background-color: var(--color-bg);
   font-family: var(--font-display);
   color: var(--color-ink);
 }
 
-/* Blurred plant-photo backdrop, visible through the glass cards on every
-   page. Drop the photo at public/images/plant-bg.jpg (any landscape-ish
-   photo works — it's scaled to cover and heavily blurred). Overscanned
-   (-8% inset + 1.1 scale) so the blur filter never shows a sharp edge, and
-   tinted with the page's own background color so text/cards stay readable
-   without needing a separate dimming layer. Falls back to the previous
-   radial-gradient look if the file doesn't exist yet. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: -8%;
-  z-index: -1;
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(21, 128, 61, 0.1), transparent 40%),
-    radial-gradient(circle at 85% 15%, rgba(59, 130, 246, 0.1), transparent 40%),
-    radial-gradient(circle at 50% 90%, rgba(21, 128, 61, 0.08), transparent 45%),
-    url("/images/plant-bg.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: blur(14px);
-  transform: scale(1.1);
-  opacity: 0.9;
+/* ---- Lime accent tuning (unlayered → wins over Tailwind utilities) ------ */
+
+/* Dark text/icons on any solid lime fill (buttons, chips, active pills). */
+.bg-brand {
+  color: #0f0f0f;
+}
+
+/* Accent text/links: a deepened lime on white, brightened for dark. */
+.text-brand,
+.text-brand-dark {
+  color: #4d7c0f;
+}
+:root[data-theme="dark"] .text-brand,
+:root[data-theme="dark"] .text-brand-dark {
+  color: #b6f21f;
+}
+
+/* Every section / card gets the lime border. */
+.bg-surface {
+  border-color: var(--color-lime);
+}
+
+/* ---- Dark-mode remaps for hard-coded utility classes ------------------- */
+/* The app predates dark mode and uses literal grays/tints in ~30 files;
+   remapping the classes here is safer than sweeping every call site. */
+[data-theme="dark"] .bg-white {
+  background-color: var(--color-surface);
+}
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-50\/60,
+[data-theme="dark"] .bg-gray-50\/50 {
+  background-color: #202020;
+}
+[data-theme="dark"] .bg-gray-100 {
+  background-color: #262626;
+}
+[data-theme="dark"] .bg-gray-200 {
+  background-color: #2a2a2a;
+}
+[data-theme="dark"] .bg-gray-300 {
+  background-color: #3f3f46;
+}
+[data-theme="dark"] .bg-gray-400 {
+  background-color: #52525b;
+}
+
+[data-theme="dark"] .text-gray-400 {
+  color: #71717a;
+}
+[data-theme="dark"] .text-gray-500 {
+  color: #9ca3af;
+}
+[data-theme="dark"] .text-gray-600 {
+  color: #cbd5e1;
+}
+[data-theme="dark"] .text-gray-700 {
+  color: #e5e7eb;
+}
+[data-theme="dark"] .text-gray-300 {
+  color: #d4d4d8;
+}
+
+[data-theme="dark"] .border-gray-100 {
+  border-color: #262626;
+}
+[data-theme="dark"] .border-gray-200 {
+  border-color: #333333;
+}
+[data-theme="dark"] .border-gray-300 {
+  border-color: #404040;
+}
+[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #262626;
+}
+
+/* Light status tints → translucent on dark */
+[data-theme="dark"] .bg-red-50,
+[data-theme="dark"] .bg-red-50\/50,
+[data-theme="dark"] .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.14);
+}
+[data-theme="dark"] .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+[data-theme="dark"] .bg-green-50 {
+  background-color: rgba(163, 230, 53, 0.12);
+}
+[data-theme="dark"] .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.14);
+}
+
+/* Deep status text → lighter on dark */
+[data-theme="dark"] .text-red-600,
+[data-theme="dark"] .text-red-700 {
+  color: #f87171;
+}
+[data-theme="dark"] .text-amber-700 {
+  color: #fbbf24;
+}
+[data-theme="dark"] .text-blue-700 {
+  color: #60a5fa;
+}
+
+/* Black overlays used for hover feedback on light */
+[data-theme="dark"] .hover\:bg-black\/5:hover,
+[data-theme="dark"] .bg-black\/5 {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .active\:bg-black\/10:active,
+[data-theme="dark"] .bg-black\/10 {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Recharts axes / gridlines are inline-styled for light — nudge for dark */
+[data-theme="dark"] .recharts-cartesian-axis-tick text {
+  fill: #9ca3af;
+}
+[data-theme="dark"] .recharts-cartesian-grid line {
+  stroke: rgba(255, 255, 255, 0.08);
 }

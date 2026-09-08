@@ -53,20 +53,23 @@ app = FastAPI(title="Smart Irrigation API")
 # tunnel URL that changes daily. Note the real access control is require_user
 # below; this just stops arbitrary web pages calling the API from a visitor's
 # browser.
-_DEFAULT_ORIGINS = [
-    "http://localhost:5173",  # Vite dev server (irrigation-dashboard)
-    "http://localhost:4173",  # Vite preview
-    "http://localhost:8081",  # Expo web dev
-    "http://localhost:19006",  # Expo web (legacy port)
-]
 _extra_origins = [
     o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()
 ]
 
+# Any localhost/127.0.0.1 port (Vite picks 5174+ when 5173 is taken, Expo web
+# moves around too, so pinning exact dev ports just breaks intermittently),
+# plus the usual static hosts for deployed web builds. Origins are a browser
+# concept — the actual access control is require_user on every route.
+_ORIGIN_REGEX = (
+    r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?"
+    r"|https://.*\.(vercel\.app|netlify\.app|onrender\.com))$"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_DEFAULT_ORIGINS + _extra_origins,
-    allow_origin_regex=r"^https://.*\.(vercel\.app|netlify\.app|onrender\.com)$",
+    allow_origins=_extra_origins,
+    allow_origin_regex=_ORIGIN_REGEX,
     allow_methods=["GET", "POST", "PUT", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )

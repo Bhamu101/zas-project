@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { SOLID_DROPDOWN } from "../../lib/glass";
 import { useLiveWeather } from "../../hooks/useLiveWeather";
+import ThemeToggle from "./ThemeToggle";
 
 const alertStyles = {
   critical: { icon: AlertOctagon, iconColor: "text-red-500", priority: 0 },
@@ -24,15 +25,15 @@ const weatherIconMap = {
 
 const PAGE_META = {
   dashboard: { title: "Welcome back, Bhamu \u{1F44B}", subtitle: "Here is what has been happening on your farm today." },
-  "ai-assistant": { title: "Goho AI", subtitle: "Ask about your beds, irrigation, or energy system." },
-  irrigation: { title: "Irrigation Control", subtitle: "Monitor and control irrigation across all beds." },
-  energy: { title: "Energy Management", subtitle: "Track solar, battery, and grid power usage." },
-  beds: { title: "Bed Monitoring", subtitle: "Live soil moisture and temperature per bed." },
-  "crop-health": { title: "Crop Health (AI)", subtitle: "Upload a plant photo for an instant AI diagnosis." },
-  "aerial-view": { title: "Aerial View", subtitle: "Satellite imagery of the farm and its boundary." },
-  reports: { title: "Data & Reports", subtitle: "Analyse performance and generate insights." },
-  alerts: { title: "Alerts & Notifications", subtitle: "Stay informed about important events on your farm." },
-  settings: { title: "System Settings", subtitle: "Configure irrigation thresholds and system info." },
+  "ai-assistant": { title: "Goho AI" },
+  irrigation: { title: "Irrigation Control" },
+  energy: { title: "Energy Management" },
+  beds: { title: "Bed Monitoring" },
+  "crop-health": { title: "Crop Health (AI)" },
+  "aerial-view": { title: "Aerial View" },
+  reports: { title: "Data & Reports" },
+  alerts: { title: "Alerts & Notifications" },
+  settings: { title: "System Settings" },
 };
 
 function useClickOutside(ref, onOutside) {
@@ -51,13 +52,13 @@ function WeatherChip() {
   const Icon = weatherIconMap[weather.conditionIcon] || Cloud;
 
   return (
-    <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/60 border border-white/60 shrink-0">
-      <Icon size={20} className="text-amber-500 shrink-0" />
+    <div className="hidden lg:flex items-center gap-2.5 pr-1 shrink-0">
+      <Icon size={26} className="text-amber-500 shrink-0" />
       <div className="leading-tight">
-        <p className="text-[11px] font-semibold text-ink flex items-center gap-1">
-          <MapPin size={10} className="text-brand" /> {weather.location}
+        <p className="text-sm font-semibold text-ink flex items-center gap-1">
+          <MapPin size={12} className="text-brand" /> {weather.location}
         </p>
-        <p className="text-xs text-muted">
+        <p className="text-sm text-muted">
           {weather.temp}&deg;C &middot; {weather.condition}
         </p>
       </div>
@@ -90,11 +91,11 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
   );
 
   return (
-    <header className="h-[100px] shrink-0 bg-white/55 backdrop-blur-xl border-b border-white/60 px-4 flex items-center justify-between gap-6 relative z-20">
+    <header className="h-[100px] shrink-0 bg-white border-b border-gray-200 px-4 flex items-center justify-between gap-6 relative z-20">
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onToggleSidebar}
-          className="w-12 h-12 rounded-xl bg-gradient-to-b from-brand to-brand-dark flex items-center justify-center text-white shrink-0 hover:opacity-90 active:opacity-80 transition-opacity"
+          className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shrink-0 hover:opacity-90 active:opacity-80 transition-opacity"
         >
           <Menu size={20} />
         </button>
@@ -104,13 +105,17 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
         <p className="font-semibold text-2xl leading-none tracking-tight text-ink truncate">
           {pageMeta.title}
         </p>
-        <p className="text-xs text-muted mt-1 truncate">
-          {pageMeta.subtitle}
-        </p>
+        {pageMeta.subtitle && (
+          <p className="text-xs text-muted mt-1 truncate">
+            {pageMeta.subtitle}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
         <WeatherChip />
+
+        <ThemeToggle />
 
         <div className="text-right leading-tight text-xs text-muted hidden md:block">
           <p>{dateStr}</p>

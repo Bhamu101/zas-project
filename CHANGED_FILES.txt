@@ -3,6 +3,1121 @@ CHANGED FILES LOG
 Running log of files changed per feature/task. Newest entries at the top.
 
 
+## 2026-09-07 — irrigation-dashboard: light / dark theme toggle
+
+- irrigation-dashboard/index.html — inline pre-paint <script> in <head>: reads
+  localStorage "theme" (falls back to `prefers-color-scheme`) and sets
+  `document.documentElement[data-theme]` before React mounts → no flash.
+- irrigation-dashboard/src/index.css
+  * `@theme` keeps the light palette as the base tokens (Tailwind needs static
+    values to generate utilities).
+  * `:root[data-theme="dark"]` sets `color-scheme: dark` and re-points the
+    semantic tokens: `--color-bg` #0f0f0f, `--color-surface` #1a1a1a,
+    `--color-card` #242424, `--color-ink` #f4f4f5, `--color-muted` #a1a1aa.
+    Lime brand + lime section borders unchanged in both themes.
+  * `.text-brand` / `.text-brand-dark` → #4d7c0f on light, #b6f21f on dark.
+  * Dark-mode remaps for the ~15 hard-coded utility classes the app uses in
+    ~30 files (`bg-white`, `bg-gray-50/100/200/300/400`, `text-gray-300..700`,
+    `border-gray-100/200/300`, `divide-gray-100`, `bg-red-50` / `amber-50` /
+    `green-50` / `blue-50` tints, `text-red-600/700` etc., `bg-black/5,10`
+    hover overlays) — safer than sweeping every call site. Plus recharts
+    (`.recharts-cartesian-axis-tick text`, `.recharts-cartesian-grid line`).
+- irrigation-dashboard/src/components/layout/ThemeToggle.jsx — NEW. A
+  [Light | Dark] segmented control; reflects `data-theme`, writes it + the
+  localStorage key on click. No icons.
+- irrigation-dashboard/src/components/layout/TopBar.jsx — renders <ThemeToggle />
+  in the right-hand cluster; sidebar-toggle button `bg-[#0f0f0f] text-[#c7ff2e]`
+  → `bg-brand` (lime, visible against both bar colours; icon dark via the global
+  `.bg-brand` rule).
+
+Sidebar stays lime in both themes (brand panel). The Dashboard hero page has no
+TopBar so the toggle isn't reachable there — navigate to any other page to
+switch. Theme persists across navigation and reload.
+
+Verified: `npm run lint` clean; `npm run build` passes; Playwright — toggled
+light→dark on Irrigation Control, navigated to System Settings (still dark),
+`data-theme` + localStorage both "dark", no page errors.
+
+
+## 2026-09-07 — System Settings — strip all card descriptions + all icons
+
+- irrigation-dashboard/src/components/settings/controls.jsx — removed the entire
+  `lucide-react` import. `InfoTip` component deleted (the ⓘ tooltip trigger next
+  to every field label); `Field` / `ToggleRow` no longer render it (their `tip`
+  prop is dropped). `SettingsCard` lost its `icon` and `description` props (only
+  `title` + `action` now). `Field` error line lost its AlertTriangle. `StatusChip`
+  lost `showIcon` — always the coloured dot now (`STATUS_TONE` lost its `Icon`
+  fields). `ConfirmDialog` lost the warning-triangle square + `Loader2` (shows
+  "Working…"). `Toast` lost its status icon and the X close (now a text "×").
+  `SaveBar` lost `Loader2` (button text → "Saving…").
+- irrigation-dashboard/src/pages/SystemSettings.jsx — removed the `lucide-react`
+  import and `CURRENT_USER` import. Deleted these text strings:
+  * page subtitle "Configuration and operations for the irrigation rig — Farm Admin"
+  * every SettingsCard `description`: "How and when the system waters each bed.",
+    "Tank levels, flow, pressure and pump protection.", "Solar / battery / grid
+    behaviour for the solar-powered rig.", "ESP32 nodes and field sensors
+    reporting to the controller.", "Choose which events raise an alert and how
+    they're delivered.", "Operational actions. Destructive actions ask for
+    confirmation.", "Read-only build and connectivity details." (+ the dynamic
+    "Last synchronised …" — that value still shows as the LAST SYNC status tile)
+  * the channels note "Only WhatsApp has a live transport wired up (Twilio)…"
+  Icons removed: `StatusItem` icon, `MaintenanceButton` icon, all 8 SettingsCard
+  section icons, `RefreshCw` in the Refresh button + loading state, `Lock` in the
+  read-only chip, `ShieldAlert` in the Danger Zone label, the Server/Database/
+  Wifi/RefreshCw/Activity icons in the System Information rows. `NOTIFICATION_*`
+  arrays dropped their unused tooltip-text 3rd element. Save / validate / confirm
+  / maintenance flows unchanged.
+
+Verified: `npm run lint` clean; `npm run build` passes; Playwright — page renders,
+lime section borders intact, edit → SaveBar → "Settings saved." toast still works,
+no page errors.
+
+
+## 2026-09-07 — irrigation-dashboard: adopt the lime palette (light theme + #C7FF2E accent)
+
+Palette from the reference board: #0F0F0F ink · #C7FF2E lime · #2E2E2E graphite
+· #FFFFFF surface · #808080 steel. User chose "light theme + lime accent" +
+section borders in #C7FF2E.
+
+- irrigation-dashboard/src/index.css
+  * @theme: `--color-brand` #15803d -> #c7ff2e, `--color-brand-dark` #14532d ->
+    #a3e635; added `--color-lime` #c7ff2e, `--color-ink` -> #0f0f0f,
+    `--color-graphite` #2e2e2e, `--color-steel` #808080; `--color-card` ->
+    #eef2e6 (faint lime-tinted inset). Page bg + white surfaces unchanged.
+  * Unlayered rules (win over Tailwind utilities), because #C7FF2E is a light
+    colour: `.bg-brand { color:#0f0f0f }` (dark text/icons on solid lime fills —
+    overrides every `bg-brand text-white` button); `.text-brand,.text-brand-dark
+    { color:#4d7c0f }` (a deepened lime that meets AA on white, for accent
+    text/links); `.bg-surface { border-color: var(--color-lime) }` — every card
+    across the app gets the lime border.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — sidebar is now lime
+  (the from-brand/to-brand-dark gradient). Retheme'd for contrast: wordmark /
+  Leaf / nav labels -> near-black; active item -> solid `bg-[#0f0f0f]
+  text-[#c7ff2e]` pill; hover -> `bg-black/10`; divider -> `border-black/10`.
+- irrigation-dashboard/src/components/layout/TopBar.jsx — the sidebar-toggle
+  button `bg-gradient from-brand to-brand-dark text-white` -> `bg-[#0f0f0f]
+  text-[#c7ff2e]` (dark button, lime icon — matches the sidebar active pill).
+- irrigation-dashboard/src/components/settings/controls.jsx — `SettingsCard`
+  <section> border `border-gray-200` -> `border-lime` (those cards aren't
+  `.bg-surface`, so the global rule above doesn't reach them).
+
+Charts / status colours (red/amber/blue, the report donut's forest green) left
+as-is per the chosen scope. `--color-graphite` / `--color-steel` added as tokens
+for later use but not wired everywhere (theme stays light).
+
+Verified: `npm run lint` clean; `npm run build` passes; Playwright across
+Irrigation Control / System Settings / Bed Monitoring / Data & Reports — lime
+borders on every section, lime fills with dark text, accent text readable,
+lime sidebar with dark text, no page errors.
+
+
+## 2026-09-07 — irrigation-dashboard: Irrigation Control — strip icons from IRRIGATION OVERVIEW
+
+- irrigation-dashboard/src/pages/IrrigationControl.jsx — scoped to the
+  IRRIGATION OVERVIEW card only: removed the `Info` icon by the heading, the
+  per-tile icons (`overviewTiles` entries lost their `icon`/`color` fields —
+  Droplets/Calendar/Clock/TrendingUp), and the TrendingUp/Down arrow in
+  `DeltaTag` (now a leading −/+). Dropped the now-unused `TrendingUp`,
+  `TrendingDown` imports. The SYSTEM MODE Info icon, bed-card kebab
+  (MoreVertical), the Calendar/Clock/Droplets in the bed stat rows, and the
+  Play/Loader2 on the Trigger button are all left as-is (outside the scope).
+
+Verified: `npx eslint src/pages/IrrigationControl.jsx` clean; no page errors.
+
+
+## 2026-09-07 — irrigation-dashboard: drop the blurred plant backdrop → flat light theme
+
+App-wide: removed the background image and the glassmorphism that depended on it.
+
+- irrigation-dashboard/src/index.css — deleted the `body::before` blurred
+  `plant-bg.jpg` backdrop entirely; deleted the whole "Glassmorphism" block
+  (the `.bg-surface` / `.bg-card` backdrop-filter augmentation, the
+  `@supports not (backdrop-filter)` fallback, the `prefers-reduced-transparency`
+  block). Tokens: `--color-bg` #eef4f1 → #f5f6f8 (flat light neutral),
+  `--color-surface` back to opaque #ffffff, `--color-card` back to #f0f5f1.
+  Cards are now plain white (their JSX `border border-gray-100 shadow-sm`
+  applies as normal). CSS bundle -6 kB.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — removed the blurred
+  `plant-bg.jpg` layer and the `bg-white/5 backdrop-blur-md` frost; the single
+  remaining backdrop layer is now a solid `bg-gradient-to-b from-brand to-brand-dark`.
+  Active nav item reverted to solid `bg-white text-brand-dark` (was a frosted
+  `bg-white/25` pill).
+- irrigation-dashboard/src/components/layout/TopBar.jsx — header
+  `bg-white/55 backdrop-blur-xl border-white/60` → solid `bg-white border-gray-200`.
+- irrigation-dashboard/src/App.jsx — dropped the now-redundant settings-only
+  `bg-[#f5f6f8]` on <main> (the body background is that colour globally now).
+- irrigation-dashboard/src/lib/glass.js — `GLASS_CARD` (only referenced by
+  currently-unused components/dashboard/* files) changed from the translucent
+  `bg-white/55 backdrop-blur-xl …` to a plain `bg-white border border-gray-200
+  shadow-sm rounded-2xl`.
+- irrigation-dashboard/src/components/settings/controls.jsx — SaveBar
+  `bg-white/95 backdrop-blur` → solid `bg-white`.
+
+public/images/plant-bg.jpg is left in place (unused now).
+
+Verified: `npm run lint` clean; `npm run build` passes; Playwright across
+Irrigation Control / Energy Management / System Settings / Bed Monitoring — flat
+light-grey page, crisp white cards, solid green sidebar, no page errors.
+
+
+## 2026-09-07 — irrigation-dashboard: Energy Management + TopBar — strip lucide icons
+
+- irrigation-dashboard/src/components/layout/TopBar.jsx — removed the `energy`
+  PAGE_META subtitle ("Track solar, battery, and grid power usage."). Only
+  `dashboard` keeps a subtitle now (and that page doesn't render the TopBar).
+- irrigation-dashboard/src/pages/EnergyManagement.jsx — dropped the whole
+  `lucide-react` import, `statIconMap`, `statColorMap`. Active Source / Battery
+  Level / Power Consumption / Energy Statistics headers are text-only; the
+  per-stat icons in Energy Statistics are gone. `DeltaTag` now shows a leading
+  −/+ instead of a TrendingUp/Down arrow. Also removed the unused `energyHistory`
+  prop (+ its pass in App.jsx) — pre-existing no-unused-vars error.
+- irrigation-dashboard/src/components/energy/SmartPowerRecommendation.jsx —
+  removed lucide import; `sourceMeta` lost its `Icon` field; dropped the Sparkles
+  header icon and the 56px coloured source-icon tile (kept "Suggested Source"
+  text); Grid Stability / Weather Outlook / Battery Reserve sub-labels are
+  text-only (coloured status dots kept).
+- irrigation-dashboard/src/components/energy/LiveOperationsSimulator.jsx —
+  removed lucide import + the `BatteryIcon` variable; Activity/Droplets/Battery/
+  Zap icons gone; headers text-only.
+- irrigation-dashboard/src/components/energy/EnergySavingsCard.jsx — removed
+  lucide import; PiggyBank/Sun/Upload/Info icons gone; labels text-only.
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx —
+  removed lucide import; `META` lost its `Icon` field. ATS diagram: source rows
+  now use a small coloured bar swatch instead of Sun/Battery/Zap; the ATS and
+  Farm Load boxes hold their label text (were Cpu/Home glyphs); ArrowRight ->
+  a plain 1px line; Signal footer icon gone. Also fixed the pre-existing
+  react-hooks/refs error (`batteryRef.current = …` during render -> in an effect).
+
+Verified: `npm run lint` now passes with ZERO errors repo-wide (the two
+pre-existing errors lived in files this change edited anyway, so they were
+cleaned up); `npm run build` passes; Playwright load shows no page errors.
+
+
+## 2026-09-07 — System Settings page: full redesign into a real config + operations console
+
+Backend (backend/main.py):
+- New module state: DEFAULT_SETTINGS (nested: irrigation / water / energy /
+  notifications), ESP32_NODES, SENSORS, MAINTENANCE_ACTIONS, FIRMWARE_VERSION,
+  BACKEND_VERSION, _STARTED_AT. Helpers: _deep_merge, _load_settings /
+  _save_settings (persist to backend/system_settings.json — gitignored),
+  _validate_settings (cross-field rules), _uptime_str, _system_status (derives
+  online/nodes/sensors/pump/solar/battery/tank from the existing mock + kpis),
+  _settings_payload.
+- New endpoints:
+  * GET  /api/settings                -> { settings, status, devices, meta }
+  * PUT  /api/settings                -> SettingsUpdate (partial ok) -> deep-merge
+    onto current, _validate_settings (422 on rule violation), persist, return
+    the GET shape.
+  * POST /api/settings/maintenance    -> { action } from MAINTENANCE_ACTIONS;
+    "factory-reset" restores DEFAULT_SETTINGS + persists; all log to BED_ACTIVITY.
+- backend/.gitignore: + system_settings.json.
+- No existing endpoint or the /api/dashboard payload was changed.
+
+Frontend (irrigation-dashboard/src):
+- NEW lib/currentUser.js — CURRENT_USER + isAdmin/canEditSettings. Centralises
+  the role the TopBar already shows ("Administrator"); no login added. Non-admin
+  => whole page renders read-only (controls disabled, no SaveBar, notice shown).
+- NEW lib/settingsApi.js — fetchSettings / saveSettings(patch) / runMaintenance.
+- NEW hooks/useSystemSettings.js — loads the payload once; exposes
+  { settings, status, devices, meta, loading, error, saving, save, reload }.
+- NEW components/settings/controls.jsx — opaque-card UI kit (deliberately NOT the
+  translucent .bg-surface glass): SettingsCard, Field (label + InfoTip tooltip +
+  hint/inline-error), Toggle, ToggleRow, NumberField (unit suffix), RangeField
+  (slider + synced number), SelectField, StatusChip (green/amber/red/gray/blue
+  tones), ConfirmDialog (Esc to close), Toast (auto-dismiss), SaveBar (sticky,
+  Cancel / Save Changes, "unsaved changes" indicator). lucide-react icons only.
+- REWROTE pages/SystemSettings.jsx (was a 29-line read-only list). Sections:
+  System Status, Irrigation Settings, Water & Pump, Energy Management (with live
+  Solar/Battery/Grid strip), Devices & Sensors (per-node + per-sensor rows from
+  the backend), Alerts & Notifications (9 event toggles + 4 channels), System
+  Information, Maintenance & Advanced (+ red Danger Zone with confirm dialogs).
+  Edit model: sparse `edits` patch state -> `draft = deepMerge(settings, edits)`;
+  `dirty` by deep compare; client `validate()` mirrors the backend rules and
+  drives inline errors + blocks save; PUT sends only the patch; success/fail
+  toasts; loading + error states. No state-syncing effect (patch cleared in the
+  async handler after save/reset). Responsive: mx-auto max-w-6xl, cards collapse
+  1/2 col by breakpoint, overflow-x-clip so edge tooltips can't widen mobile.
+- App.jsx — settings route now `<SystemSettings dashboard={data} />` (live
+  battery/grid); <main> gets bg-[#f5f6f8] only on the settings page so the global
+  blurred plant backdrop doesn't show through (page reads as a control console).
+
+Verified: eslint clean on all changed/added files; `npm run build` passes
+(852 kB bundle — pre-existing chunk-size warning only). Playwright: desktop +
+tablet + mobile (390px) with no horizontal overflow; inline validation, sticky
+SaveBar, save toast (persisted — backend reloads value after save), and the
+Factory Reset confirm dialog all exercised, zero page errors.
+Pre-existing `npm run lint` errors remain in two files this task did NOT touch
+(EnergyManagement.jsx unused `energyHistory`; GridChangeoverSimulation.jsx ref
+write during render) — from the repo's bleeding-edge eslint-plugin-react-hooks@7.
+
+
+## 2026-09-07 — irrigation-dashboard: Data & Reports — season / date-range / crop filters
+
+- irrigation-dashboard/src/pages/DataReports.jsx — replaced the three dead
+  toolbar buttons (date label, "Filters", Export) with three working `<select>`s
+  + the Export button:
+  * Season — "2026 Season" / "2025 Season". The report payload already carries
+    both `thisSeason` and `lastSeason` arrays, so SeriesChart now takes a
+    `season` prop and plots the chosen year as the primary (solid/filled) line
+    with the other year as the dashed comparison; legend labels swap.
+  * Date range — Full range / Last 3 weeks / Last 2 weeks / Last week →
+    `range.points` (null/4/3/2); SeriesChart takes a `points` prop and
+    `rows.slice(-points)` to window both time-series charts.
+  * Crop type — All crops / Covo / Tsunga / Tomato (from `CROP_TARGETS`). The
+    mock payload has no per-crop breakdown, so rather than fabricate numbers
+    this is reflected in a new active-scope line under the "Data & Reports"
+    title ("2025 Season  ·  Last 2 weeks  ·  Tomato only").
+  New state: `season`, `dateRange`, `cropType`. Added `SEASON_OPTIONS`,
+  `RANGE_OPTIONS`, `selectClass` consts and a `CROP_TARGETS` import.
+
+Verified: `npx eslint src/pages/DataReports.jsx` clean; Playwright confirms the
+charts re-window and the season line swaps on selection.
+
+
+## 2026-09-07 — irrigation-dashboard: Alerts — working date filter, no row tint
+
+- irrigation-dashboard/src/pages/AlertsPage.jsx
+  * The "Date Range" button was dead (no onClick). Replaced it with a working
+    `<select>` (All Time / Today / Yesterday) styled like the Severity/Category
+    filters. New `dateFilter` state; added
+    `.filter((a) => dateFilter === "all" || splitTime(a.time).day.toLowerCase()
+    === dateFilter)` to the alert list. (Mock alert times are only
+    Today/Yesterday strings, so those are the only meaningful buckets.) Removed
+    the now-unused `Calendar` import.
+  * Removed the per-row severity tint on the alerts table — every `<td>` had
+    `style={{ backgroundColor: isAck ? "transparent" : s.hex+"0d" }}` plus
+    `rounded-l/r-xl` on the end cells. All gone; rows are now separated by a thin
+    bottom border (`[&>td]:border-b [&>td]:border-gray-100` on the `<tr>`). The
+    small status-pill badge (Critical/Warning/…) keeps its own tint — that's the
+    status indicator, not the row wash.
+
+Verified: `npx eslint src/pages/AlertsPage.jsx` clean; Playwright confirms the
+date select filters ("Showing 2 of 3" on Today).
+
+
+## 2026-09-07 — irrigation-dashboard: Data & Reports — strip all lucide icons
+
+- irrigation-dashboard/src/pages/DataReports.jsx — removed every lucide icon on
+  the page: toolbar buttons (Calendar/Filter/Download → text-only), SEASON DATA
+  SUMMARY heading (BarChart3) and per-stat-tile icons, the two SeriesChart
+  headers (Droplet/Zap) — `Icon`/`iconColor` props dropped from the component,
+  IRRIGATION EVENTS (Sprout) / WATER USE BY ZONE (Droplet) / TOP INSIGHTS
+  (Lightbulb) headers, the per-insight icons (`insightIconMap` deleted), REPORTS
+  heading (FileText) and the per-report-card icons (`reportIconMap` /
+  `reportColorMap` deleted), and both Download icons in the report-detail modal.
+  The modal's `X` close button → a plain "Close" text button (an icon-less icon
+  button would be invisible). `stats` array lost its now-unused `icon`/`color`
+  fields (kept `hex` for the tile tint). Whole `lucide-react` import removed.
+  DeltaLine's up/down arrow is gone too — it now shows a leading −/+ and keeps
+  the red/green colour. Charts, legend swatches and progress bars are data viz,
+  left intact.
+
+Verified: `npx eslint src/pages/DataReports.jsx` clean; Playwright screenshots of
+the page and the report modal confirm.
+
+
+## 2026-09-07 — irrigation-dashboard: Aerial View — drop the source / upgrade-path note
+
+- irrigation-dashboard/src/pages/AerialView.jsx — removed the bottom info card
+  (the `Info` icon + "Current source: … free … satellite basemap tiles …" and
+  "Upgrade path: … Google Earth Engine … service account key …" paragraphs).
+  Page is now just the header card + the Leaflet satellite map. Dropped the
+  now-unused `Info` import, plus the pre-existing unused `MapPin` import.
+
+Verified: `npx eslint src/pages/AerialView.jsx` clean.
+
+
+## 2026-09-07 — irrigation-dashboard: Bed Monitoring — drop soil-temperature row
+
+- irrigation-dashboard/src/pages/BedMonitoring.jsx — removed the "Soil
+  Temperature … NN.N°C" row from each bed card (the `flex justify-between` block
+  with the Thermometer icon + `bed.soilTempC`). Dropped the now-unused
+  `Thermometer` import. `bed.soilTempC` is still in the API payload, just not
+  shown here.
+
+Verified: `npx eslint src/pages/BedMonitoring.jsx` clean.
+
+
+## 2026-09-07 — irrigation-dashboard: Bed Monitoring — status tags + range-bar scale
+
+- irrigation-dashboard/src/pages/BedMonitoring.jsx
+  * Bed-card status tag (Critical / Needs Water / Optimal): removed the tinted
+    pill background (`px-2.5 py-1 rounded-full` + inline `backgroundColor
+    s.hex+"1a"`) and the `.toUpperCase()`. Now plain `text-sm font-bold` in the
+    state colour, `lowercase first-letter:uppercase` → sentence case:
+    "Critical" / "Needs water" / "Optimal".
+  * RangeBar: the 0–100 scale under the moisture bar was two rows with
+    inconsistent alignment — a `flex justify-between` "0% / 100%" row, then a
+    separate absolutely-positioned row for the trigger/optMin/optMax ticks, so
+    the endpoints and the interior ticks used different positioning and "100%"
+    didn't line up with the bar end. Merged into ONE row: ticks
+    `[0, trigger, optMin, optMax, 100]` (deduped, sorted), each absolutely
+    positioned at `left: tick%` with edge-aware transform (0% left-aligned,
+    100% `translateX(-100%)`, interior `translateX(-50%)`). Uniform across all
+    three cards; 100% now sits flush with the bar's right edge.
+
+Verified: `npx eslint src/pages/BedMonitoring.jsx` clean; Playwright screenshot
+confirms.
+
+
+## 2026-09-07 — irrigation-dashboard: Irrigation Control — remove percentage icon + BED MOISTURE MAP
+
+- irrigation-dashboard/src/pages/IrrigationControl.jsx
+  * Removed the `Droplets` icon that sat left of the big moisture % on each bed
+    card; the % now sits flush under the bed name. The running-cycle cue that
+    icon's pulse gave is still covered by the " · irrigating…" text on the Soil
+    Moisture line.
+  * Removed the BED MOISTURE MAP card from the bottom row — it duplicated the
+    per-bed name/%/status already shown in the three bed cards above. The
+    IRRIGATION OVERVIEW card is no longer in a 3-col grid; it's now a plain
+    full-width card. Chart min-height 150px -> 220px so it isn't cramped at full
+    width.
+  * Deleted the now-unused `STATE_HEX` constant (only the moisture map and the
+    old status-pill background used it). `STATE_LABEL` stays (status label).
+
+Verified: `npx eslint src/pages/IrrigationControl.jsx` clean; Playwright screenshot
+confirms layout.
+
+
+## 2026-09-07 — irrigation-dashboard: bed status labels — drop pill bg, bigger text
+
+- irrigation-dashboard/src/pages/IrrigationControl.jsx — the per-bed status label
+  (Critical / Needs Water / Optimal) was a tinted pill
+  (`text-xs font-medium px-2.5 py-1 rounded-full` + inline `backgroundColor:
+  STATE_HEX+"1a"`). Removed the background, padding and pill radius; now plain
+  `text-sm font-bold` in the state colour (`s.badgeText`: red-600 / amber-600 /
+  brand green) with `whitespace-nowrap`. Colour still carries the status meaning.
+
+
+## 2026-09-07 — irrigation-dashboard: align the Irrigation Control sections
+
+- irrigation-dashboard/src/pages/IrrigationControl.jsx
+  * Bed cards: `Trigger Irrigation Now` buttons no longer misaligned across the
+    3 cards. Bed 2's `lastIrrigation` string ("Yesterday, 06:40 PM") wraps to two
+    lines and was pushing its button ~16px lower than Beds 1/3. Fix: card is now
+    `flex flex-col`, the three stat values (Last Irrigation / Duration / Water
+    Used) get `min-h-[2rem] leading-4` so the row is the same height whether the
+    value is one or two lines, and the button gets `mt-auto` to pin to the card
+    bottom. Verified: all 3 buttons and all 3 stat rows now share identical
+    top/bottom Y.
+  * SYSTEM MODE card: `p-5` -> `p-4` to match every other card on the page;
+    dropped a redundant wrapper `<div>` around the heading.
+  * Bottom row: removed the redundant `<div className="flex flex-col">` wrapper
+    around the BED MOISTURE MAP card — it's now a direct grid child with
+    `flex flex-col`, same as the IRRIGATION OVERVIEW card. Grid `items-stretch`
+    keeps them equal height (both 339px).
+
+Verified: `npx eslint src/pages/IrrigationControl.jsx` clean; Playwright layout
+measurements confirm button/stat-row/section alignment.
+
+
+## 2026-09-07 — irrigation-dashboard: blend the header weather widget into the background
+
+- irrigation-dashboard/src/components/layout/TopBar.jsx — `WeatherChip` container
+  was a solid pill (`bg-white/60 border border-white/60 rounded-xl px-3 py-1.5`)
+  that popped against the frosted header. Removed the fill/border/radius entirely;
+  it's now just the icon + location/temp text (`pr-1`), matching the chrome-less
+  date/time block beside it so it reads as part of the header glass.
+
+
+## 2026-09-07 — irrigation-dashboard: remove page subtitle / helper copy
+
+Per user request, deleted a set of descriptive subtitles / helper lines.
+
+- irrigation-dashboard/src/components/layout/TopBar.jsx — dropped the `subtitle`
+  from 8 PAGE_META entries (ai-assistant, irrigation, beds, crop-health,
+  aerial-view, reports, alerts, settings). Kept dashboard + energy subtitles.
+  Render site now guards `{pageMeta.subtitle && (<p>…</p>)}` so pages without one
+  don't emit an empty subtitle line.
+- irrigation-dashboard/src/pages/AIAssistant.jsx — removed the
+  "Ask about your beds, irrigation, or energy system" <p> under the "Goho AI"
+  chat header.
+- irrigation-dashboard/src/pages/DataReports.jsx — removed the
+  "Analyse performance and generate insights for your irrigation system." <p>
+  under the page <h1>.
+- irrigation-dashboard/src/pages/IrrigationControl.jsx — removed the
+  "Automatic mode lets the AI trigger irrigation. Manual mode requires you to
+  trigger each bed yourself." <p> from the SYSTEM MODE card; dropped the now-
+  redundant `mb-1` on the heading row.
+
+Verified: grep for all target strings in src/ → none left; Playwright load of the
+running dev server → zero page errors, pages render cleanly.
+
+
+## 2026-09-07 — irrigation-dashboard: remove cursor-reactive glass (keep glassmorphism)
+
+Reverted the 2026-09-04 "cursor-reactive glass cards" change per user request.
+The static glassmorphism (frosted translucent cards + glass sidebar) stays.
+
+- irrigation-dashboard/src/lib/cardCursor.js — DELETED.
+- irrigation-dashboard/src/App.jsx — removed the `initCardCursor` import and its
+  `useEffect`; `react` import back to `{ useState }` only.
+- irrigation-dashboard/src/index.css — `.bg-surface` back to the glass-only recipe
+  (backdrop blur/saturate, white edge, depth shadow). Dropped the interaction CSS
+  vars, the cursor-follow `background-image` radial-gradient, the
+  `transform`/`translate`/`transition`, the `.bg-surface:hover` shadow bump, and
+  the `@media (prefers-reduced-motion)` block that paired with it.
+
+Verified: no `cardCursor` / `--cursor-*` / `--card-*` references left in src/;
+Playwright load of the running dev server shows zero page errors and cards no
+longer tilt/glow on hover.
+
+
+## 2026-09-04 — Web dashboard "Trigger Irrigation Now" now hits the real backend
+
+- irrigation-dashboard/src/pages/IrrigationControl.jsx — `handleTrigger` is now async: it first
+  POSTs `/api/irrigation/start/{bedId}` (with `durationMin`) to the backend at
+  `http://localhost:8021` before doing anything else. For Bed 1 (with `ESP32_BASE_URL` configured
+  in backend/.env), this is what actually fires the real ESP32/pump/valve cycle; for the other
+  beds it just flips the backend's own mock state, same as the mobile app's manual controls
+  already did. Only after that call succeeds does the existing client-side moisture-ramp
+  animation start (kept for the smooth visual feedback); if it fails (e.g. `502` because the
+  ESP32 is unreachable), the button never claims "irrigating" and a red error banner shows the
+  detail instead. When the visual ramp completes, the page now also calls
+  `/api/irrigation/stop/{bedId}` so the backend's own state (and moisture bump) stays in sync —
+  a no-op for Bed 1 beyond bookkeeping since the real ESP32 already stopped itself on its own
+  timer. Added `pending` (per-bed in-flight-request guard, shows "Starting…") and `triggerError`
+  state; button disables during both `pending` and `running`.
+- backend/.env — added `ESP32_BASE_URL=http://192.168.61.238` (Bed 1's ESP32 IP from Serial
+  Monitor after flashing `firmware/sensor-node/bed1-manual-irrigation.ino`), so
+  `POST /api/irrigation/start/1` now actually calls the real hardware instead of the demo just
+  simulating it.
+- Restarted the backend (`uvicorn main:app --port 8021`, no `--reload` flag, so it doesn't
+  auto-pick-up .env changes) so the new `ESP32_BASE_URL` takes effect.
+
+Verified: `npx eslint src/pages/IrrigationControl.jsx` clean. Backend restarted and confirmed
+responding (`curl http://localhost:8021/` → 200). Real end-to-end pump/relay behavior still
+pending the user's own bench test with the 12V battery connected.
+
+
+## 2026-09-04 — irrigation-dashboard: cursor-reactive glass cards (tilt + follow-light)
+
+- irrigation-dashboard/src/lib/cardCursor.js — NEW. `initCardCursor()` attaches
+  ONE delegated `pointermove` listener to the document; for whichever
+  `.bg-surface` card the pointer is over it writes CSS vars (`--cursor-x/y`,
+  `--cursor-glow`, `--card-rx/ry`, `--card-lift`), batched into a single rAF.
+  Resets vars on pointerout / documentElement pointerleave / window blur.
+  Honours `prefers-reduced-motion` (skips the tilt vars, keeps the light).
+  Returns a cleanup fn.
+- irrigation-dashboard/src/App.jsx — import `initCardCursor`; `useEffect(() =>
+  initCardCursor(), [])` (added `useEffect` to the react import).
+- irrigation-dashboard/src/index.css — `.bg-surface` now:
+  * declares the interaction vars with rest defaults,
+  * `background-image`: a 320px radial-gradient white highlight at
+    `var(--cursor-x) var(--cursor-y)`, alpha scaled by `--cursor-glow`
+    (layers over the translucent background-color, under card content —
+    no pseudo-element, no `position` change),
+  * `transform: perspective(900px) rotateX(var(--card-rx)) rotateY(var(--card-ry))`
+    + `translate: 0 var(--card-lift)` so the card leans toward the pointer,
+  * `transition` on transform/translate/box-shadow/background-image (~160ms),
+  * `:hover` deepens the drop shadow,
+  * `@media (prefers-reduced-motion: reduce)` drops transform/translate.
+
+Reason: user wants the card under the cursor to lean toward the pointer and
+carry a light highlight that tracks the cursor across the glass.
+
+
+## 2026-09-04 — irrigation-dashboard: apply glassmorphism to cards + sidebar
+
+- irrigation-dashboard/src/index.css — made surface tokens translucent
+  (`--color-surface` -> rgba(255,255,255,0.6), `--color-card` -> rgba(255,255,255,0.4))
+  and added an unlayered "Glassmorphism" block that augments the generated
+  `.bg-surface` / `.bg-card` utilities with `backdrop-filter: blur(20px) saturate(180%)`
+  (10px/160% for `.bg-card`), a white glass edge (`border-color: rgba(255,255,255,0.6)`),
+  and a depth shadow + inset highlight. Unlayered so it overrides Tailwind's
+  `border-gray-100` / `shadow-sm` on all 37 card call sites without touching JSX.
+  Added `@supports not (backdrop-filter)` fallback (near-opaque cards) and a
+  `prefers-reduced-transparency: reduce` media query (solid white cards).
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — added a
+  `bg-white/5 backdrop-blur-md` frost layer over the plant-photo backdrop;
+  active nav item changed from solid `bg-white text-brand-dark` to a frosted
+  pill (`bg-white/25 text-white border border-white/40 backdrop-blur-md`),
+  inactive items given a transparent border to prevent hover layout shift.
+
+Reason: user asked to "apply glassmorphism". TopBar was already glass
+(`bg-white/55 backdrop-blur-xl`) and index.css already had a blurred plant
+backdrop intended to show through "glass cards" — this completes that intent
+centrally rather than per-component.
+
+
+## 2026-09-04 — Bed 1 pump drive: switched to 2N2222-transistor-piloted automotive relay
+
+- firmware/sensor-node/bed1-manual-irrigation.ino — replaced the old single `setRelay()` +
+  `RELAY_ACTIVE_LOW` pump/valve helper with two separate functions: `setPump()` (active-HIGH,
+  direct `digitalWrite` on GPIO18, drives a 2N2222 transistor's base which pilots the automotive
+  relay's coil) and `setValve()` (active-LOW via `VALVE_ACTIVE_LOW = true`, unchanged — still
+  drives relay-module channel 2). Pin assignments unchanged (`PUMP_RELAY = 18`,
+  `VALVE_RELAY = 19`); state machine, HTTP endpoints (`/irrigate`, `/stop`, `/status`), and safety
+  caps (`MAX_RUN_SEC = 7200`, `VALVE_SETTLE_MS = 500`) unchanged. Header comment block rewritten
+  to document the new pump-drive circuit (GPIO18 -> 220Ω resistor -> 2N2222 base; 2N2222 emitter
+  -> GND; 2N2222 collector -> relay pin 85; relay pin 86 -> fused +12V; 1N4007 flyback diode across
+  the coil, cathode/banded end -> pin 86).
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING.md — rewritten for the new pump circuit: parts
+  table now lists the 2N2222/1N4007/220Ω resistor instead of "10A relay module pilots the
+  automotive relay"; wiring diagram and signal table updated to show the transistor pilot path;
+  added 2N2222 TO-92 pinout caveat (E/B/C varies by manufacturer — check datasheet) and 1N4007
+  orientation warning (banded/cathode end toward +12V pin 86); test sequence step 1 updated to
+  expect one relay click (transistor-driven) instead of the old two-relay-click check.
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING-v2.pdf — regenerated PDF of the above (via
+  scratchpad HTML -> headless Edge --print-to-pdf, per this project's usual doc flow). Saved as
+  `-v2` because the original `BED1-MANUAL-IRRIGATION-WIRING.pdf` was locked by another process
+  (open in a viewer) and could not be overwritten — the old PDF is now stale; delete it and rename
+  `-v2` once it's closed, or just use the `-v2` file and the .md (source of truth) going forward.
+
+Reason: user acquired the actual parts (12V 30A automotive relay, 2N2222, 1N4007, 220Ω resistor)
+and asked for the transistor-pilot version instead of the earlier "spare relay-module channel
+pilots the automotive relay" design used as a placeholder before the parts were on hand.
+
+Verified: reviewed wiring diagram signal-by-signal against the .ino's new setPump()/setValve()
+polarities (pump active-HIGH, valve active-LOW) for consistency; PDF regenerated and opened cleanly
+(143KB). Not hardware-tested yet — user still needs to bench-test per the doc's 4-step sequence.
+
+
+## 2026-09-03 — Splash: removed the footer text below Sign In
+
+- mobile-app/src/app/index.tsx — removed the "Agri-Intelligence · Smart Farming Platform" caption
+  below the Sign In button. Cleaned up what became dead code as a result: the `Text` import
+  (only `Animated.Text` remains in use), the `FontSize` import, and the `footer` style.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still just the 1 pre-existing unrelated error.
+Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash: the AGRI-INTELLIGENCE section no longer reads as a boxed card
+
+The previous "transparent" background on this section didn't fully work: it was still wrapped in
+the shared `Card` component, whose `BlurView` paints its own `tint="light"` overlay independent of
+any `style.backgroundColor` override, plus Card's own border and shadow — so the section kept
+showing as a visible box against the gradient despite the transparent fill.
+
+- mobile-app/src/app/index.tsx — stopped using `Card` for this section; it's now a plain `View`
+  with no background, no blur/tint, no border, no shadow. The wordmark, subtitle, and underline
+  sit directly on the page's gradient with nothing distinguishing the section as its own surface.
+  Dropped the now-unused `Card` import and the dead `backgroundColor: 'transparent'` style.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still just the 1 pre-existing unrelated error.
+Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash: page background is now a gradient instead of flat lime
+
+- mobile-app/src/app/index.tsx — outer container swapped from a plain `View` (flat
+  `Colors.primary` fill) to `LinearGradient` (already a project dependency), diagonal from
+  `Colors.primaryLight` (pale lime tint) to `Colors.primary` (vivid lime) — reused existing
+  palette tokens rather than inventing new hex values. Since the hero card previously matched the
+  page's old flat color exactly, it would now show as a mismatched flat rectangle on top of the
+  gradient — set its background to transparent so the gradient shows through uninterrupted; the
+  wordmark/subtitle/underline sit directly on it, border/blur/shadow unchanged.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still just the 1 pre-existing unrelated error.
+Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash: whole page now lime (Get Started's color); Get Started button removed
+
+- mobile-app/src/app/index.tsx — page background (`container`) changed from white to
+  `Colors.primary` (the same lime the Get Started button filled with). The hero card was already
+  this same lime from the previous request, so it now blends seamlessly into the page — the
+  wordmark/subtitle/underline read directly on one solid lime canvas.
+  Removed the "Get Started" button entirely: it and "Sign In" both routed to the same `/login`
+  screen already, so nothing is lost — "Sign In" (outline variant, dark border/text) is now the
+  only action, and reads clearly against the lime page.
+  Footer text color switched from a light gray (`Colors.textMuted`, illegible on lime) to a
+  translucent near-black matching the rest of this screen's "dark text on lime" palette.
+  Dropped the now-unused `ArrowRight` icon import.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still just the 1 pre-existing unrelated error.
+Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash: solid-lime hero card, vertically centered on screen
+
+- mobile-app/src/app/index.tsx — the hero Card's fill now matches its own border color
+  (`Colors.primary`, lime) instead of the shared Card's default translucent white, making it a
+  solid block rather than a glass one. Added a second `flex: 1` spacer below the buttons (to
+  balance the existing one above the card) so the whole hero+buttons group sits vertically
+  centered on screen instead of anchored toward the bottom.
+- Recolored everything inside the now-opaque-lime card, since the previous colors were tuned for
+  a light/white card and some would have been unreadable or invisible against solid lime: the
+  hyphen and subtitle moved from light/mid gray to translucent near-black (`rgba(15,15,15,...)`,
+  same near-black as the wordmark, just dimmed for hierarchy); the underline moved from lime
+  (which would've been invisible on a lime background) to `Colors.primaryDark`.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still just the 1 pre-existing unrelated error.
+Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash: removed the top symbol, switched to light-background glassmorphism
+
+"That top emoji" turned out to mean the abstract plant/circuit `IntelligenceSymbol` mark that sat
+above the wordmark (not a literal emoji — took one clarifying question to find it, since a search
+of both codebases' source for actual emoji characters came up empty).
+
+- mobile-app/src/app/index.tsx — removed `IntelligenceSymbol`, its `useDrawn` stroke-draw hook,
+  and all of its now-unused timing constants/react-native-svg imports. The wordmark reveal now
+  starts almost immediately (500ms in) instead of waiting for the ~2s symbol phase that no longer
+  exists, so the whole intro is correspondingly shorter.
+- Page background switched from near-black (`Colors.deep`) to light (`Colors.background`,
+  matching every other screen). The wordmark/subtitle/underline block is now wrapped in the
+  shared `Card` component — the same glassmorphic (BlurView + translucent white + lime border)
+  treatment used everywhere else in the app — instead of sitting directly on a flat dark fill.
+- Recolored everything for the light background: the wordmark text moved from `Colors.primary`
+  (lime — illegible as text on a light surface, the same contrast rule from the earlier palette
+  pass) to `Colors.primaryDark` (near-black); the footer and hyphen moved from translucent-white
+  values (meant for a dark bg) to `Colors.textMuted`; the "Sign In" button switched from the
+  `outlineLight` variant (white border/text, for dark backgrounds) to plain `outline` (dark
+  border/text), matching how it's used elsewhere on light screens like login.tsx. The underline
+  stays lime — a thin decorative fill doesn't have the same text-contrast problem.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` still shows only the 1 pre-existing
+setState-in-effect error (Home screen, unrelated). Dev server rebundled clean.
+
+
+## 2026-09-03 — Splash now always plays first, even with a persisted session
+
+User wanted the splash to be the first thing seen even on a hard refresh. Root cause: auth
+(`useAuthStore`) persists `isAuthenticated` to AsyncStorage, and rehydration on web resolves fast
+enough that the splash's old effect saw `isAuthenticated: true` on its very first run and called
+`router.replace('/(tabs)')` before the component's `checked` gate ever let the brand animation
+render — so a returning logged-in user (any hard refresh, since the session survives it) skipped
+the splash entirely and landed straight on Home.
+
+- mobile-app/src/app/index.tsx — removed the `checked` state and the auth-gated early-redirect
+  effect. The splash now always renders and always plays its full animation immediately on mount,
+  regardless of auth state. A single timer (fired at the same point the Get Started/Sign In
+  buttons would start fading in) reads `useAuthStore.getState().isAuthenticated` fresh at that
+  moment and redirects to `/(tabs)` only then, for an already-authenticated session — reading the
+  store directly rather than depending on the animation effect avoids restarting the whole
+  animation sequence if the persisted value resolves slightly after mount.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` down to 1 error (the other pre-existing
+setState-in-effect warning was in this exact code block and is gone now that the pattern causing
+it was removed; the one remaining error is the unrelated Home-screen one). Dev server rebundled
+clean.
+
+Not independently verified: whether the splash animation now visibly plays before the redirect on
+an actual hard refresh with a real persisted session — I can't refresh a browser tab or click
+through in this session. Please hard-refresh while logged in and confirm you see the full intro
+before landing on Home.
+
+
+## 2026-09-03 — Fixed: every confirm/notify dialog was dead on web (root cause of "logout button not working")
+
+User reported the Logout button doing nothing. Root cause wasn't logout-specific: read
+node_modules/react-native-web/dist/exports/Alert/index.js and found `Alert.alert` is a complete
+no-op stub on that platform (`static alert() {}`) — and `expo start --web` is this project's whole
+dev-testing setup this session. Every `Alert.alert(...)` call in the app (confirmations *and*
+plain notifications) has been silently doing nothing whenever tested on web; logout specifically
+routes its actual logic through the confirm dialog's "Log out" button callback, so no dialog meant
+no callback meant nothing happened. This affects real native builds not at all (Alert works
+normally there) but made ~10 interactions across 6 files untestable/non-functional in this
+session's dev environment.
+
+- mobile-app/src/lib/alert.ts — new: `notify(title, message?)` and `confirmAction(title, message,
+  confirmLabel, onConfirm, opts?)`. Both use the real `Alert.alert` on iOS/Android; on web they
+  fall back to `window.alert`/`window.confirm` so the same call actually does something in this
+  dev environment instead of nothing.
+- Migrated every `Alert.alert` call site to these: more/index.tsx (Logout, and the
+  Reports/User Management/Data Export "not ready yet" placeholders), more/settings.tsx (Logout,
+  connection test success/failure, Help & Support, About), water/index.tsx (start/stop irrigation
+  confirm + their error alerts), insights/index.tsx (start irrigation confirm + error alert),
+  login.tsx (forgot password), crops/health.tsx (camera/library permission-denied).
+- Fixed 4 of this session's 6 persistently-pre-existing lint errors along the way (unescaped
+  apostrophes in settings.tsx x2, login.tsx, health.tsx) since I was already editing those exact
+  lines — down to 2 remaining (both pre-existing setState-in-effect patterns, unrelated to this
+  fix, left as-is).
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` now shows only 2 errors (down from the 6 this
+session has shown every single run) — zero new issues. Dev server rebundled clean.
+
+Not independently verified: I still can't click through the actual browser (no screenshot/
+automation tool this session) to confirm the logout confirm dialog now visibly appears and
+completes end-to-end — verified only that the code path is now reachable (window.confirm fires
+synchronously and calls the real logout() + router.replace('/') on confirm). Please click Logout
+yourself and confirm the browser's native confirm popup appears and logs you out.
+
+
+## 2026-09-03 — Splash screen rebuilt as a cinematic brand-reveal animation
+
+User supplied a detailed "Claude Design Prompt" brief (symbol draws itself -> AGRI-INTELLIGENCE
+reveals letter-by-letter from center outward -> subtitle -> center-out underline -> hold, ~5-7s,
+eased, explicitly not plain fades) written against a green-background/gold-text palette, with the
+instruction to substitute this app's actual palette. No reference video was attached to work from
+— built from the written spec alone.
+
+- mobile-app/src/app/index.tsx — rewritten. New `IntelligenceSymbol`: an abstract plant-stem +
+  two curved leaf-strokes topped by a circuit "node" and a short trace ending in a glowing dot
+  (react-native-svg AnimatedPath/AnimatedCircle, strokeDasharray/strokeDashoffset for the draw-on
+  effect, deliberately not a literal leaf icon per the brief). New `AnimatedWordmark`: each of the
+  17 characters in "AGRI-INTELLIGENCE" (hyphen included) is its own Animated.Text, staggered by
+  distance from the center character so the reveal sweeps outward rather than fading in at once.
+  Subtitle ("SMART AGRICULTURE · INTELLIGENT DECISIONS") fades/slides up after the wordmark
+  settles; the underline is a single View animated via `scaleX` (RN's default center transform
+  origin draws it outward in both directions for free). The existing Get Started/Sign In buttons
+  now fade+spring in once the sequence finishes, instead of appearing immediately.
+- Color mapping applied per request: the brief's gold -> `Colors.primary` (neon lime, same as the
+  Start Irrigation button and this session's established accent); its green/teal background ->
+  this app's existing `Colors.deep` (near-black, unchanged).
+- Timing was compressed from the brief's ~7s to ~4.8s total (buttons interactive around then)
+  while keeping the same phase order/easing — a repeat visitor opening the app shouldn't wait
+  7 seconds to tap a button every time, unlike a one-time marketing video. Easing throughout is
+  `Easing.out(Easing.cubic)`, matching the brief's "no linear robotic movement" instruction.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` back to the same 6 pre-existing errors this
+session has consistently seen, dev server rebundled with no runtime errors/warnings beyond one
+pre-existing unrelated `pointerEvents` deprecation notice.
+
+NOT verified: the actual visual result. No screenshot tool was available this session, and the
+17-character wordmark's rendered width against real phone screen widths (with the letter-spacing
+requested) was never checked — it may wrap awkwardly and need a font-size/letter-spacing pass
+after a real look. User should open the app and watch the intro before treating this as final.
+
+
+## 2026-09-03 — Mobile app: section cards bordered in the Start Irrigation button's color
+
+- mobile-app/src/components/ui/Card.tsx — border changed from a translucent white (left over
+  from the glassmorphism pass) to `Colors.primary` (the same lime the Start Irrigation button
+  fills with). Since this is the shared Card component, every screen's content sections picked
+  this up in one place.
+- mobile-app/src/app/(tabs)/more/index.tsx — the More menu's list container is a custom View
+  (not built on the shared Card component) but plays the same "section" role, so its border was
+  updated to match too (was plain `Colors.border` gray).
+- Left everything else using `Colors.border` alone: form field borders (TextField, chat input),
+  small icon buttons (notification bell, stepper +/-), chat bubbles, and inactive
+  chip/tab borders — those aren't "sections", and an inactive chip needs to look visually
+  distinct from an active one, which already uses the lime border/fill.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` back to the same 6 pre-existing errors this
+session has consistently seen — zero new issues. Dev server rebundled clean.
+
+
+## 2026-09-03 — Mobile app: floating pill tab bar with a raised active-tab capsule
+
+User supplied a reference image (soft-UI bottom nav: a floating rounded pill bar, active icon
+sitting in its own raised capsule with a colored border/glow) and asked for that look, with the
+capsule border colored to match the Start Irrigation button.
+
+- mobile-app/src/app/(tabs)/_layout.tsx — tab bar is now `position: absolute` with side/bottom
+  margins and full rounding (a floating pill, not a full-width bar anchored to the screen edge).
+  Added a `TabIcon` helper: the active tab renders its icon inside a raised circular capsule
+  (white fill, 1.5px border in `Colors.primary` — the same lime the Start Irrigation button fills
+  with — plus the standard card shadow for a "popped up" look); inactive icons are plain, colored
+  `Colors.textMuted`. Dropped the tab bar's hairline top border (doesn't make sense on a floating
+  pill) and the now-unused `tabBarActiveTintColor`/`tabBarInactiveTintColor` options (superseded
+  by TabIcon's own logic).
+- mobile-app/src/constants/theme.ts — `Spacing.huge` 64 -> 140. Every one of its 8 existing call
+  sites was a ScrollView/FlatList bottom-content padding, so raising it was safe everywhere and
+  necessary: the tab bar floats 24px off the bottom now (previously flush with the edge), so
+  screen content needs more clearance to not end up hidden behind it.
+- mobile-app/src/app/(tabs)/assistant/index.tsx — the Goho AI chat input row isn't a scroll
+  container (it's pinned at the bottom via flex layout), so it didn't benefit from the Spacing.huge
+  change; gave it its own 100px bottom padding so the input field and send button clear the
+  floating pill instead of sitting behind it.
+- mobile-app/src/app/(tabs)/more/alerts.tsx, more/index.tsx — these had little to no bottom
+  padding at all (not even the old Spacing.huge); added it so their last list items don't end up
+  under the floating bar either.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` back to the same 6 pre-existing errors this
+session has consistently seen — zero new issues. Dev server rebundled clean.
+
+
+## 2026-09-03 — Mobile app: removed the plant-photo background everywhere, flat palette only
+
+- mobile-app/src/components/ui/ScreenBackground.tsx — dropped the blurred plant-photo layer
+  entirely; now just paints a flat `Colors.background` (white) fill. This is rendered behind
+  nearly every screen, so the change applies app-wide in one place.
+- mobile-app/src/app/(tabs)/_layout.tsx — tab bar background dropped its plant-photo layer too;
+  the BlurView glass effect (from the previous request) now blurs the actual screen content
+  scrolling underneath instead of a decorative photo — arguably more correct glassmorphism.
+- mobile-app/src/app/index.tsx — splash screen: removed the plant photo + its dark gradient
+  overlay (the overlay existed only to keep text legible over that photo). The container's
+  existing flat `Colors.deep` (near-black) background now shows directly; same content/animation.
+- assets/images/plant-bg.jpg is no longer referenced anywhere in mobile-app/src — left the file
+  in place rather than deleting it, in case it's wanted again.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` back to the same 6 pre-existing errors this
+session has consistently seen — zero new issues. Dev server rebundled clean.
+
+
+## 2026-09-03 — Mobile app: icon-only tab bar + real glassmorphism (expo-blur)
+
+Terse follow-up request ("use icons only and apply glassmorphism") with no page specified —
+scoped it to the two places those instructions unambiguously apply: the bottom tab bar (the
+app's one icon+label nav element) and the shared Card component (used by nearly every screen),
+rather than stripping labels off buttons/menus elsewhere where text is load-bearing.
+
+- mobile-app/package.json — added `expo-blur` (via `npx expo install`, SDK-57-pinned) for real
+  backdrop blur — the app previously faked a frosted look with a blurred static image + a solid
+  opacity overlay, not actual glassmorphism.
+- mobile-app/src/components/ui/Card.tsx — rewritten to render a `BlurView` (intensity 40, light
+  tint) with a translucent white fill (`rgba(255,255,255,0.55)`) and a translucent white border,
+  instead of a solid white View. Same children/style API, so every existing call site (nearly
+  every screen) picked this up automatically. Cards with their own explicit `backgroundColor` in
+  their `style` prop (recCard, treatmentCard, errorCard, etc.) still override it and stay solid —
+  intentional, those are emphasis callouts, not general content cards.
+- mobile-app/src/app/(tabs)/_layout.tsx — `tabBarShowLabel: false` (icons only, sized up +2 to
+  fill the space labels used to occupy); replaced `TabBarBackground`'s blurred-image+solid-tint
+  trick with a real `BlurView` over the same (now unblurred, since BlurView does the blurring)
+  farm photo — same visual intent, genuine glass this time. Dropped the now-unused
+  `tabBarLabelStyle`/`FontFamily`/`FontSize` imports.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` back to the same 6 pre-existing errors this
+session has consistently seen — zero new issues. Dev server rebundled clean.
+
+Known limitation: expo-blur's BlurView has limited/no actual blur on web (Metro's web target,
+which is what this dev session tests in) — it should render as intended on a real iOS/Android
+build, but on web you may see the translucent tint without the blur softening. Worth a real-device
+check before relying on this for a demo.
+
+
+## 2026-09-03 — Mobile app: neon-lime rebrand, splash animation, skeleton loading
+
+User supplied a reference image (near-black + neon-lime UI/UX portfolio card) and asked for that
+palette, a splash animation, and skeleton loading states.
+
+- mobile-app/src/constants/theme.ts — primary -> #C7FF2E (neon lime), primaryDark -> #0F0F0F
+  (near-black), primaryLight -> #F2FFDC, deep -> #0F0F0F, background/border/text/textSecondary/
+  textMuted updated to the reference's near-black/white/grey values. Documented a hard rule in a
+  comment: lime is bright enough to fail contrast as text/icon color on white, so `primary` is
+  fills-only (buttons, active chips/tabs, progress rings/bars) and `primaryDark` is the brand
+  color to use for legible text/icons on light surfaces. `success`/`warning`/`critical`/`info`
+  were already independent hex values (not aliased to primary), so status colors (health/moisture
+  states) are unaffected by the brand swap.
+- Went through every other file that referenced bare `Colors.primary` as TEXT/ICON color (not a
+  fill) and fixed the ones that would have become illegible lime-on-white: StatusBadge's success
+  fg, alerts.tsx's success icon tone, CropCard's + Home's "optimal" state color, energy.tsx's
+  "good direction" delta color (all switched to the still-independent `Colors.success`, not
+  primary) — plus PrimaryButton's filled-primary label/icon color, its plain 'outline' variant's
+  border+text, login.tsx's checkbox check + "Sign up" link, insights.tsx's active tab label,
+  alerts.tsx's active filter label, the assistant chat's user-bubble text + send icon, water's
+  MiniMetric icon, and settings.tsx's avatar icon (all switched from white/lime to
+  `Colors.primaryDark`, since those sit on a lime fill or directly on a light surface). Also
+  fixed 3 PrimaryButton call sites (ErrorState's Retry, health.tsx's Take Photo/Analyze Photo)
+  passing a white icon color that no longer matched the button's now-lime fill.
+- mobile-app/src/app/index.tsx — splash screen: added an entrance animation (badge fades in,
+  then the title/subtitle/buttons fade + spring up from below) instead of appearing instantly.
+- mobile-app/src/components/ui/Skeleton.tsx — new: a pulsing placeholder block (Animated opacity
+  loop, core React Native, no new dependency).
+- mobile-app/src/components/ui/States.tsx — `LoadingState` now renders a Skeleton-based layout
+  (header row, hero card, two half-width cards, three full-width rows) instead of a spinner,
+  used by every screen that already called `<LoadingState />`. The optional `label` still shows
+  as a caption below the skeleton for the few callers with a meaningful message (e.g. Home's
+  "Waking up your farm's server…" slow-network notice); bare calls now show no generic "Loading…"
+  text, just the skeleton.
+
+Gotcha hit and fixed: the initial Skeleton/splash implementation used `useRef(new
+Animated.Value(x)).current`, which the project's React Compiler lint rule (react-hooks/refs)
+flags as "cannot access ref during render" — same class of issue noted in this project's
+2026-08-25 Solar Tracker entry. Fixed by switching to `useState(() => new Animated.Value(x))`
+lazy-init instead, which is safe to read during render.
+
+Verified: `npx tsc --noEmit` clean; `npx expo lint` back down to the same 6 pre-existing errors
+this session has consistently seen (health.tsx/settings.tsx/login.tsx unescaped entities, two
+pre-existing setState-in-effect warnings) — zero new issues. Dev server rebundled clean.
+
+
+## 2026-09-03 — Backend now actually calls Bed 1's ESP32 on Start/Stop Irrigation
+
+User wants the mobile app's manual irrigation button to control real hardware once it's on the
+network (not a public/remote tunnel — just the backend reaching the ESP32 over the local network,
+same as the backend/mobile app already talk to each other). Wired the piece that's been deferred
+since the wiring guides: backend -> ESP32.
+
+- backend/main.py — added ESP32_BASE_URL (env var, default unset) and a call_esp32() helper using
+  `requests`. start_irrigation now calls Bed 1's ESP32 at `/irrigate?sec={durationMin*60}` *before*
+  mutating the bed's in-memory state, so a failed hardware call (502, with the underlying
+  connection error in the detail) leaves the bed exactly as it was rather than the app claiming
+  "irrigating" while nothing started. stop_irrigation calls `/stop` for early abort (the ESP32 runs
+  its own timed cycle regardless). Beds 2/3 and the case where ESP32_BASE_URL is unset are
+  completely unchanged — still the existing simulation. Verified live: normal simulation still
+  works with the var unset; with it pointed at an unreachable test address, start returned a clean
+  502 and the bed's state was provably untouched afterward (checked via /api/dashboard).
+- backend/requirements.txt — added `requests` explicitly (was only present transitively before).
+- backend/.env.example — documented ESP32_BASE_URL: what it's for, that it's optional/off by
+  default, and to use the ESP32's LAN IP or `http://irrigation.local` if mDNS resolves from
+  wherever the backend runs.
+- firmware/sensor-node/bed1-manual-irrigation.ino — raised MAX_RUN_SEC from 60 (bench-test value)
+  to 7200 (120 min), matching the mobile Water page's manual duration stepper max, so a real
+  end-to-end call isn't silently truncated to a minute. Updated the safety-cap comment accordingly.
+
+Known limitation, not addressed here: once the ESP32 auto-completes its timed cycle, the backend/
+app don't find out until the farmer taps Stop (no polling of the ESP32's /status yet) — the pump
+is physically off already, but the UI still shows "irrigating" until then. Flagging as a natural
+next step, not fixed now since it wasn't asked for.
+
+Not done (needs the physical hardware): actually setting ESP32_BASE_URL to a real device.
+irrigation.local didn't resolve from this dev machine when checked (mDNS not supported here, or
+nothing flashed/running yet) — user should set the var to the ESP32's literal LAN IP once it's
+wired and flashed per BED1-MANUAL-IRRIGATION-WIRING.md.
+
+
+## 2026-09-03 — Mobile app: iterative UI pass (landing, nav, Crops-matches-web, Home widgets)
+
+Series of follow-up visual requests in one session, building on the earlier icon/background pass
+(see the "bigger borderless metric icons" entry below). Net effect described here reflects the
+final state, not every intermediate step:
+
+- mobile-app/src/app/index.tsx — landing screen: removed the top-left logo icon and the
+  Save Water / Increase Yields / Sustainable Future benefits row entirely.
+- mobile-app/src/app/(tabs)/_layout.tsx — the Weather tab is now "Goho AI" (Sparkles icon); its
+  route folder was renamed weather/ -> assistant/ so the path isn't misleadingly named after the
+  feature it replaced. Re-added "More" as a visible 6th bottom tab (Energy Management etc. are
+  now directly reachable) per an earlier request in this same session.
+- mobile-app/src/app/(tabs)/assistant/index.tsx (was weather/index.tsx) — content replaced with
+  the Goho AI chat screen (previously a Water sub-screen, moved here per request); the old 7-day
+  forecast UI is gone. mobile-app/src/app/(tabs)/water/assistant.tsx and water/_layout.tsx
+  deleted; the Water page's Goho AI entry card removed along with its now-unused imports.
+- mobile-app/src/components/dashboard/CropCard.tsx — rewritten twice this session: first to drop
+  the dark-green gradient/leaf-icon header and stat icons in favor of plain text, then rewritten
+  again to mirror irrigation-dashboard/src/pages/BedMonitoring.jsx's BedCard exactly (same status
+  colors/copy, a proportional red/amber/green/gray range bar with a moisture-position pin, optimal
+  range + trigger row, soil temp row, status message, and an action button + "View Details" link)
+  now that per-bed crop/threshold fields are available on mobile. No longer takes cropName/onPress
+  props — it reads bed.crop directly and navigates itself (Start Irrigation/Monitor button ->
+  Water tab with that bed selected; View Details -> the crop detail screen).
+- mobile-app/src/types/index.ts — added crop/vwcTrigger/vwcOptimalMin/vwcOptimalMax to the Bed
+  interface — the backend already sends these per-bed (backend/main.py's CROP_TARGETS merge) but
+  the mobile type was stale and the Water/Insights pages had been using system-wide defaults
+  instead of each bed's real crop thresholds. Only CropCard was updated to use the real per-bed
+  values; other screens are unchanged.
+- mobile-app/src/app/(tabs)/crops/index.tsx — dropped the CTA card's icon chip (Diagnose a Plant
+  keeps just its text + chevron); simplified now that CropCard is self-contained.
+- mobile-app/src/app/(tabs)/index.tsx — Home screen: removed the Soil Moisture and Crop Health
+  metric cards (Water remains); added a "Soil Moisture by Bed" card with one CircularProgress ring
+  per bed, colored by status; rebuilt the weather hero as a Windows-11-style widget (blue gradient,
+  big temp + condition icon top, location with a pin, condition + today's high/low bottom-left,
+  a live date/clock bottom-right, updating every 30s) in place of the transparent version from
+  earlier in this session — dropped the system-status badge that widget used to carry, since the
+  reference image is a plain weather widget with no farm-system info.
+
+Verified: `npx tsc --noEmit` clean and `npx expo lint` shows only the same 6 pre-existing errors
+present before this session (health.tsx/settings.tsx/login.tsx unescaped entities, two
+pre-existing setState-in-effect warnings) across every edit in this batch. Dev server rebundled
+clean each time (no runtime errors) — this session's Windows/webpack-dev-server combo had
+unreliable HMR, so verification relied on full server restarts rather than trusting hot-reload
+alone.
+
+
+## 2026-09-03 — Mobile app: bigger borderless metric icons, dropped Temperature card, photo splash
+
+User shared a reference mockup (dark drone/farm photography, bold white title, green circular-arrow
+CTA) and asked for three specific changes to the Agri-Intelligence mobile app.
+
+- mobile-app/src/components/dashboard/MetricCard.tsx — removed the light-green square background
+  behind each Home-screen metric icon (Soil Moisture/Water/Crop Health), icon size 18->30. Dropped
+  the now-unused `Radius` import.
+- mobile-app/src/app/(tabs)/index.tsx — removed the "Temperature" metric card (avgAirTemp stat) and
+  its now-unused Thermometer import/computation per request; the weather hero card's temperature
+  reading is untouched. 3 remaining metric cards flow via the grid's existing flexGrow (Crop Health
+  now stretches full-width on its own row — acceptable, not restructured further).
+- mobile-app/src/app/index.tsx — landing/splash screen rebuilt around the reference's visual
+  language: full-bleed photo hero (reused assets/images/plant-bg.jpg, already the project's brand
+  photo, no new asset needed) with a bottom-weighted dark gradient overlay, a small "AI-Powered
+  Farming" badge, bold two-line uppercase title, and an arrow icon added to the "Get Started" button
+  (PrimaryButton already supported an icon slot). Benefits list and Sign In button unchanged.
+  Replaced a space-between+auto-margin layout with a plain flex spacer for predictable positioning.
+
+Also: running `npm run lint` for the first time in this repo (to verify these edits) triggered
+Expo's one-time auto-setup, installing eslint@^9/eslint-config-expo and adding
+mobile-app/eslint.config.js — a side effect of the pre-existing `lint` script, not a deliberate
+dependency addition. Surfaced 6 pre-existing lint errors in unrelated files (health.tsx,
+settings.tsx, login.tsx, and a setState-in-effect pattern in both index.tsx files that predates
+this session) — none introduced by these edits, left as-is since fixing them wasn't requested.
+
+Verified: `npx tsc --noEmit` clean, `npx expo lint` shows no new errors from the touched files,
+Metro/webpack rebuilt successfully with no runtime errors in the running web dev server's log.
+Not verified: visual appearance in-browser — no screenshot tool was available this session: user
+should check the already-running http://localhost:8081 preview.
+
+
+## 2026-09-03 — Bed 1 wiring updated for a confirmed 10A relay (pilot-relay fix)
+
+User confirmed their 2-channel relay module is 10A/channel, under the pump's ~15A draw flagged
+in the previous entry. Rather than requiring a new relay module purchase, redesigned around the
+existing 10A module by having it pilot a separate 30A+ automotive-style relay (cheap, common
+part) for the pump only — the module's contacts now only ever switch the automotive relay's
+~150-200mA coil, never the pump's 15A directly.
+
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING.md — rewrote the warning section, parts
+  list, wiring diagram, and pin table around the pilot-relay design (relay CH1 COM->ground,
+  CH1 NO->automotive relay coil-minus, instead of switching the pump directly). Valve wiring on
+  CH2 is unchanged (well under 1A, the 10A rating is fine there). Updated the bench test sequence
+  to check for two relay clicks (module, then automotive relay) before wiring the pump itself.
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING.pdf — regenerated from the updated source.
+- firmware/sensor-node/bed1-manual-irrigation.ino — updated the header comment's wiring summary
+  to match (GPIO18/GPIO19 assignments and all firmware logic are unchanged — only the physical
+  wiring behind relay channel 1 changed, so no code edits were needed beyond the comment).
+
+Still not done: backend integration and re-enabling the dashboard's real POST.
+
+
+## 2026-09-03 — Replaced pump-only manual-trigger draft with a real Bed 1 (pump+valve) design
+
+User supplied the actual pump's nameplate (STURDY DC Submersible Pump, model ZQB-12V, 180W @ 12V
+-- works out to ~15A, wiring red=+/blue=-) and specified a 2-channel relay for one bed only, so
+the prior generic pump-only bench-test guide is superseded by a design built around this pump and
+scoped to Bed 1 (pump on relay ch1, Bed 1's valve on ch2), not a multi-step bring-up sequence.
+
+Deleted (per explicit request): firmware/sensor-node/step3-relay-pump-test.ino,
+step4-manual-irrigation-http.ino, MANUAL-TRIGGER-WIRING.md. MANUAL-TRIGGER-WIRING.pdf could not be
+deleted -- it was open in WPS Office (file locked); it's stale/orphaned and safe to delete once
+closed.
+
+- firmware/sensor-node/bed1-manual-irrigation.ino — new: WiFi + HTTP server (GET /irrigate?sec=N,
+  /stop, /status) driving a full open-valve -> pump-on -> pump-off -> close-valve state machine
+  (OPENING/RUNNING/CLOSING with a 500ms valve-settle delay each side) for Bed 1, instead of the
+  pump-only relay toggle from the deleted drafts. Reuses GPIO18 (pump) / GPIO19 (valve 1) from
+  WIRING.md's existing pin map. Keeps the 60s MAX_RUN_SEC hard cap and active-LOW relay handling
+  from the earlier draft.
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING.md — new: wiring diagram + parts list sized
+  to the real pump's ~15A draw, with a prominent warning that common 10A-rated 2-channel relay
+  boards are under-rated for this load (need >=20A) -- a genuine fire/failure risk if ignored, not
+  just a nicety. Includes a 4-stage bench test sequence (relay alone -> valve -> pump-in-bucket ->
+  real plumbing).
+- firmware/sensor-node/BED1-MANUAL-IRRIGATION-WIRING.pdf — new: printable version of the above,
+  rendered from a standalone HTML source via headless Edge --print-to-pdf (same method as the
+  deleted MANUAL-TRIGGER-WIRING.pdf).
+
+Not done: backend integration and re-enabling the dashboard's real POST -- still deferred until
+this is verified on real hardware, same as before.
+
+
+## 2026-09-03 — Manual irrigation trigger bench-test guide (Steps 3-4) + PDF
+
+Follow-up to making the dashboard's "Trigger Irrigation Now" button eventually control real
+hardware (currently a client-side simulation only). Staged as two firmware steps to test the
+pump-relay path before wiring valves or touching a real bed:
+
+- firmware/sensor-node/step3-relay-pump-test.ino — new: cycles the pump relay (GPIO18) on/off
+  every 5s with no WiFi/button/sensor logic, to prove wiring + relay polarity first. Assumes an
+  active-LOW relay board (flip RELAY_ACTIVE_LOW if wrong).
+- firmware/sensor-node/step4-manual-irrigation-http.ino — new: adds a bare WebServer.h HTTP
+  server (GET /irrigate?sec=N, GET /status) + mDNS ("irrigation.local") on top of Step 3's
+  wiring, so the network path (dashboard -> backend -> ESP32 -> pump) can be proven before the
+  backend integration exists. Hard-caps runtime at 60s per request regardless of the requested
+  duration, so a dropped connection can't leave the pump running.
+- firmware/sensor-node/MANUAL-TRIGGER-WIRING.md — new: step-by-step wiring table (pump-only,
+  matches WIRING.md Circuit 4), parts list, safety notes, and test instructions for both steps.
+- firmware/sensor-node/MANUAL-TRIGGER-WIRING.pdf — new: printable version of the above (rendered
+  from a standalone HTML source via headless Edge --print-to-pdf), matching the existing
+  WIRING.md/WIRING.pdf pairing convention.
+
+Not done: backend integration (POST /api/irrigation/trigger/{bed_id} calling the ESP32) and
+re-enabling the dashboard button's real POST — both explicitly deferred until Step 4 is verified
+on real hardware. No valve wiring yet either (pump-only for this test).
+
+
+## 2026-09-03 — New PROJECT_CONTEXT.md (engineering context/reference doc)
+
+- PROJECT_CONTEXT.md — new: repo-wide "what exists and how it fits together" doc, complementing
+  PROJECT-OBJECTIVES.md (the "why"/scope doc). Covers repo layout, the backend's endpoints/state
+  model, both clients' stacks/status, hardware/firmware status, cross-cutting gotchas (shared VWC
+  threshold sources, no auth/db, required env vars, the eslint+build+Playwright verification bar
+  used throughout this project), and an open-threads list. Built by reading PROJECT-OBJECTIVES.md,
+  backend/main.py, both app package.json files, mobile-app/README.md, and CHANGED_FILES.txt history
+  — no code changed.
+
+
 ## 2026-08-27 — Added then removed the "Live Simulation" page (per request)
 
 Built a self-contained Live Simulation scenario page (auto-irrigation + energy
@@ -414,3 +1529,292 @@ Mobile app:
 Web dashboard:
 - irrigation-dashboard/src/pages/CropHealth.jsx — rewritten: working upload/diagnose tool added above the existing "planned ESP32-CAM" section
 - irrigation-dashboard/src/components/layout/TopBar.jsx — subtitle fix (no longer says "coming soon")
+
+
+## 2026-09-07 — Run mobile app on a phone via Expo Go
+
+- mobile-app/.env — EXPO_PUBLIC_API_URL switched from http://localhost:8021 to the
+  public Render URL (https://zas-irrigation-api.onrender.com) so a physical phone can
+  reach the backend; old localhost line kept commented.
+- mobile-app/package.json, package-lock.json — added @expo/ngrok devDependency
+  (required for `expo start --tunnel`; tunnel ultimately failed with "remote gone
+  away", fell back to LAN mode).
+- No app source changes. Dev server started with `npx expo start` (LAN, port 8081);
+  QR for exp://10.11.17.202:8081 sent to user.
+
+## 2026-09-07 — Home screen: flatten cards, align moisture rings
+
+- mobile-app/src/app/(tabs)/index.tsx
+  - "Soil Moisture by Bed", "Farm Insight", and the Your Crops (Bed 1/2/3) rows
+    no longer wrapped in <Card> — removed the translucent-white fill, lime border
+    and shadow so they sit flush on the page background.
+  - Moisture rings: each ring column is now flex:1 (equal thirds, ring centred in
+    each) instead of space-between; labels get numberOfLines={1} + centred text so
+    varying crop-name lengths can't push rings out of line.
+  - Ring track colour Colors.background -> Colors.border (was invisible on white).
+  - Crop rows: hairline top divider between beds (borderTopColor Colors.border) in
+    place of the per-card gap.
+  - Dropped now-unused Card import.
+
+## 2026-09-07 — Flatten cards app-wide (match Home)
+
+- mobile-app/src/components/ui/Card.tsx — rewritten flat: dropped the translucent
+  white fill, lime border, shadow and expo-blur BlurView. Now a plain View with
+  vertical padding + a single bottom hairline (Colors.border) so stacked cards /
+  list rows stay separated. Content sits on the page background like Home.
+- Tinted "callout" cards keep their tint but lost the (now no-op) borderColor and
+  gained paddingHorizontal so the fill doesn't hug the text:
+  - mobile-app/src/app/(tabs)/insights/index.tsx — cropCardActive
+  - mobile-app/src/app/(tabs)/water/index.tsx — recCard
+  - mobile-app/src/app/(tabs)/crops/[id].tsx — recCard
+  - mobile-app/src/app/(tabs)/more/energy.tsx — recCard
+  - mobile-app/src/app/(tabs)/crops/health.tsx — errorCard, treatmentCard
+- mobile-app/src/components/dashboard/RecommendationCard.tsx — "Why this advice?"
+  box: white fill -> hairline border, to match the flat look.
+- No change needed to CropCard / MetricCard / alerts / settings / crops list —
+  they inherit the flat Card automatically and already had their own internal
+  dividers / gap spacing.
+- tsc --noEmit and eslint both clean on all touched files.
+
+## 2026-09-07 — Section dividers in brand lime
+
+- mobile-app/src/components/ui/Card.tsx — bottom rule that segments sections is
+  now Colors.primary (lime) at 1.5px (was grey hairline). Tinted callout cards
+  inherit it too.
+
+- mobile-app/src/components/ui/Card.tsx — lime section rule bumped 1.5px -> 3px,
+  extra bottom padding, for a clearly visible section divider.
+
+## 2026-09-07 — Login routes through the splash screen
+
+- mobile-app/src/app/login.tsx — after a successful login, router.replace('/')
+  instead of '/(tabs)'. The splash (index.tsx) plays the brand reveal then, on
+  seeing an authenticated session, forwards to /(tabs) itself (~2.9s).
+- mobile-app/src/app/index.tsx — hide the "Sign In" button on the splash when
+  the session is already authenticated (so the post-login pass reads as a pure
+  brand/loading screen).
+
+## 2026-09-07 — Per-screen skeleton loaders
+
+- mobile-app/src/components/ui/States.tsx — LoadingState now takes a `variant`
+  ('home' | 'crops' | 'cropDetail' | 'water' | 'insights' | 'energy' | 'alerts')
+  and renders a skeleton whose block layout mirrors that screen's real content
+  (faux ScreenHeader, chip rows, 2-up metric grids, stacked cards/list rows)
+  instead of one generic home layout everywhere. Added Block/Stack/Chips/Grid/
+  SkHeader skeleton primitives.
+- Call sites pass the matching variant:
+  index.tsx (home, label only kept for the slow-server notice), crops/index.tsx,
+  crops/[id].tsx, water/index.tsx, insights/index.tsx, more/energy.tsx,
+  more/alerts.tsx. Dropped the generic "Loading …" captions.
+- Pre-existing eslint error in (tabs)/index.tsx:70 (setSlowLoad in effect) is
+  unrelated and untouched.
+
+## 2026-09-07 — Splash wordmark in Playfair Display
+
+- Marqen Serif (from the reference) is a paid font; used Playfair Display, a
+  free high-contrast Didone from Google Fonts, as the stand-in.
+- mobile-app/package.json / package-lock.json — added @expo-google-fonts/playfair-display.
+- mobile-app/src/app/_layout.tsx — load PlayfairDisplay_700Bold in useFonts.
+- mobile-app/src/constants/theme.ts — FontFamily.serif = 'PlayfairDisplay_700Bold'
+  (display-only, not a body face).
+- mobile-app/src/app/index.tsx — splash "AGRI-INTELLIGENCE" wordmark now uses
+  FontFamily.serif; size 30 -> 34, letterSpacing 1 -> 0.5.
+- Metro may need a full reload (r in the Expo CLI) to bundle the new font asset.
+
+## 2026-09-07 — Public dev tunnel for off-LAN phone (Cloudflare)
+
+- No repo code changes. Infra only:
+  - ngrok route abandoned: bundled v2 is dead; standalone v3 agent gets
+    quarantined by Windows Defender on this machine.
+  - Using cloudflared standalone binary -> `cloudflared tunnel --url
+    http://localhost:8081` -> https://sullivan-identifier-intended-tuesday.trycloudflare.com
+  - Expo restarted with EXPO_PACKAGER_PROXY_URL=<that url> so the manifest +
+    JS bundle serve through the tunnel (verified via curl).
+  - Phone opens exp://sullivan-identifier-intended-tuesday.trycloudflare.com in Expo Go.
+  - trycloudflare URL is ephemeral — changes on cloudflared restart.
+
+## 2026-09-08 — mobile-app: drop soil-temperature stats (parity with web BedMonitoring)
+
+- mobile-app/src/components/dashboard/CropCard.tsx — removed the "Soil
+  Temperature … NN°C" row (Thermometer icon + bed.soilTempC). Dropped the
+  now-unused Thermometer import and the tempRow / tempValue styles.
+- mobile-app/src/app/(tabs)/crops/[id].tsx — removed the "Soil temp" ConditionStat
+  from the Current Conditions grid (Air temp / humidity / soil moisture kept).
+  Dropped the now-unused Thermometer import.
+- bed.soilTempC stays in the API payload and mobile types, just not displayed.
+- tsc --noEmit + eslint clean.
+
+## 2026-09-08 — mobile-app: full lime border on every section
+
+- mobile-app/src/components/ui/Card.tsx — replaced the 3px lime bottom rule with
+  a full 2px lime (Colors.primary) border + radius + padding:Spacing.lg, so every
+  Card renders as an outlined box. Still no fill/shadow/blur.
+- mobile-app/src/app/(tabs)/index.tsx — Home stopped using <Card>, so its sections
+  were flat. styles.section is now the same lime-bordered box (2px, radius lg,
+  padding lg) and is applied to the weather hero, "Soil Moisture by Bed",
+  "Farm Insight" and the "Your Crops" block. Removed the now-unused `hero` style.
+- Screens where a section is a bare <View> heading + a list of Cards
+  (water history, energy season stats, crop-detail activity): the list items are
+  Cards, so each is individually lime-boxed — left as-is (no nested outer box).
+- tsc clean; the lone eslint error in (tabs)/index.tsx:70 (setSlowLoad) is
+  pre-existing and unrelated.
+
+## 2026-09-08 — Real authentication (Supabase Auth) + backend hardening
+
+Supabase project created: agri-intelligence (ref ewseaaucyujohlepufpo, eu-west-1,
+free tier, org "Josi's Org"). URL https://ewseaaucyujohlepufpo.supabase.co
+
+BACKEND
+- backend/auth.py — NEW. Verifies the caller's `Authorization: Bearer <jwt>`
+  against the Supabase project's PUBLIC JWKS (ES256/RS256). The backend never
+  sees a password and holds no token-minting secret. Enforces issuer +
+  audience="authenticated", so the project's own anon key can't be passed off as
+  a user session. SUPABASE_URL is read lazily (NOT at import time) because
+  main.py imports this module before it calls load_dotenv().
+  PyJWKClientError -> 401 (token not signed by this project), genuine JWKS
+  network failure -> 503.
+- backend/main.py
+  * All 10 /api/* routes now carry dependencies=[Depends(require_user)].
+    Only "/" and the docs remain public.
+  * CORS: allow_origins=["*"] replaced with an explicit localhost list +
+    a regex for vercel/netlify/onrender, plus CORS_EXTRA_ORIGINS env var.
+    Methods/headers narrowed.
+  * MAX_IRRIGATION_MINUTES=120 — StartIrrigationRequest.durationMin is now
+    Field(ge=1, le=120) and re-clamped in the handler. Previously unbounded and
+    forwarded to the ESP32 as sec=duration*60 (runaway-pump risk).
+  * Crop-health: MAX_IMAGE_BYTES=8MB (base64 length cap + decoded-size check)
+    and an ALLOWED_IMAGE_MIME_TYPES allowlist. cropName max_length=100.
+  * ChatRequest: messages bounded to 1..40, content 1..4000 chars, role
+    pattern-restricted — stops unbounded Gemini spend on the server key.
+- backend/requirements.txt — added pyjwt[crypto].
+- backend/.env.example + backend/.env — added SUPABASE_URL, CORS_EXTRA_ORIGINS.
+
+MOBILE
+- mobile-app/src/lib/supabase.ts — NEW. Supabase client. Session stored in
+  expo-secure-store (iOS Keychain / Android EncryptedSharedPreferences), NOT
+  AsyncStorage; web falls back to AsyncStorage.
+- mobile-app/src/store/authStore.ts — REWRITTEN. Was a mock that accepted any
+  email and ignored the password entirely. Now real signIn/signUp/resetPassword/
+  logout via Supabase, driven by onAuthStateChange. Deliberately NOT wrapped in
+  zustand persist (that would mirror tokens back into plaintext AsyncStorage).
+  Adds isRestoring for the async session restore.
+- mobile-app/src/services/api.ts — every request now attaches
+  `Authorization: Bearer <access_token>` via getSession() (which also silently
+  refreshes it). A 401 response signs the user out and surfaces a clear message.
+- mobile-app/src/app/login.tsx — REWRITTEN. Email + password validation, real
+  inline errors, sign-in/sign-up toggle, working forgot-password. Removed the
+  fake "Continue with Google/Apple" buttons (they just called handleLogin with a
+  hardcoded address). Password rules enforced on sign-up only. Reset-password and
+  sign-in errors are deliberately non-enumerating.
+- mobile-app/src/app/(tabs)/_layout.tsx — auth gate: redirects to /login when
+  there's no session, waits on isRestoring so a cold start doesn't bounce a
+  signed-in user out.
+- mobile-app/src/app/(tabs)/more/settings.tsx — logout is now awaited before
+  navigating.
+- mobile-app/.env + .env.example — EXPO_PUBLIC_SUPABASE_URL and
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
+- Installed: @supabase/supabase-js, expo-secure-store, react-native-url-polyfill.
+
+VERIFIED (13/13 automated checks, against the running backend + real Supabase)
+- Unauthenticated GET/POST on dashboard, settings, irrigation/start,
+  alerts/test-whatsapp, assistant/chat -> all 401
+- Garbage token -> 401; forged HS256 "alg confusion" token -> 401;
+  project anon key used as a session -> 401
+- Real password sign-in -> 200 on dashboard + settings
+- durationMin=100000 -> 422; non-image mimeType -> 400; 500-message chat -> 422
+- Android bundle builds clean (12.2 MB); tsc + eslint clean
+- Temporary e2e fixture user created for testing was DELETED afterwards
+  (auth.users is empty). Supabase security advisors: no findings.
+
+STILL REQUIRED BEFORE PRODUCTION
+- The deployed Render backend is still running the OLD code and has no
+  SUPABASE_URL set — redeploy + set that env var, or the app will 401/500
+  against it.
+- Supabase "Confirm email" is ON and only the built-in SMTP is configured, which
+  is rate-limited to a couple of emails/hour and is explicitly not for
+  production. Either turn Confirm email off (Authentication -> Sign In/Providers
+  -> Email) for testing, or configure custom SMTP (Resend/SendGrid) before real
+  users. Password reset also depends on this.
+- No rate limiting on our own FastAPI endpoints yet (Supabase rate-limits auth,
+  but /api/* is unthrottled per-user).
+- The ESP32 remains unauthenticated on the LAN.
+
+## 2026-09-08 — Deployed the authenticated backend to Render
+
+- render.yaml — declared SUPABASE_URL (with a literal value; it's public, not a
+  secret) and an optional CORS_EXTRA_ORIGINS.
+- Commit e5ea30d pushed to origin/main — scoped deliberately to backend/ +
+  render.yaml only. The other ~50 modified files and the 5 pending deletions
+  (firmware WIRING.md/.pdf/sensor-node.ino, the WhatsApp video, the removed
+  weather tab) were left uncommitted — they are unrelated to the deploy.
+  Note this commit also carried the previously-uncommitted system-settings
+  feature in backend/main.py, since it lives in the same file.
+- FOUND ON DEPLOY: Render does NOT apply env vars newly declared in render.yaml
+  without a manual Blueprint sync. The first deploy came up 500-ing every
+  authenticated request (unauthenticated ones still 401'd, which is why a
+  no-token check alone would have looked fine — the missing-token branch returns
+  before SUPABASE_URL is read).
+- Commit bc2a64e — backend/auth.py now falls back to DEFAULT_SUPABASE_URL when
+  the env var is unset. The env var still takes precedence. Chosen over a
+  dashboard step because the URL is public by design (it already ships in the
+  mobile app and in render.yaml) and there is no Render API key available here.
+
+VERIFIED AGAINST PRODUCTION (https://zas-irrigation-api.onrender.com), 9/9:
+  no token / garbage token / anon key as session / forged HS256 -> 401
+  irrigation start without token -> 401
+  real Supabase token -> 200 on dashboard and settings
+  durationMin=100000 -> 422, non-image mimeType -> 400
+Temporary fixture users used for these checks were deleted; auth.users is empty.
+
+## 2026-09-08 — irrigation-dashboard: restore function after the auth change
+
+Fixing a regression I introduced: the backend began requiring a bearer token,
+and the dashboard had no auth at all, so every request 401'd. Not a redesign —
+no visual changes beyond the new login screen, which is required functionality.
+
+Scope was bigger than first stated: FIVE files hardcoded http://localhost:8021
+with no credentials, and there was no login flow to get a token from
+(lib/currentUser.js was a hardcoded "Farm Admin" stub).
+
+- irrigation-dashboard/src/lib/apiClient.js — NEW. The single place the app
+  talks to the backend: base URL from VITE_API_URL (defaults to localhost:8021),
+  attaches Authorization: Bearer from the Supabase session (getSession() also
+  silently refreshes), maps 401 -> signOut + clear message, unwraps FastAPI's
+  `detail` for errors.
+- irrigation-dashboard/src/lib/supabase.js — NEW. Browser Supabase client.
+- irrigation-dashboard/src/components/auth/LoginGate.jsx — NEW. Wraps <App/> in
+  main.jsx so useDashboardData never runs before a session exists. Email/password
+  validation, non-enumerating error copy, session restore state.
+- Migrated off hardcoded URLs onto apiFetch:
+  hooks/useDashboardData.js, lib/settingsApi.js, pages/AIAssistant.jsx,
+  pages/CropHealth.jsx, pages/IrrigationControl.jsx
+- AIAssistant now sends only the last 40 messages (backend caps history at 40).
+- src/App.jsx — error state no longer says "localhost:8000" (wrong port, and it
+  predates the move to 8021); shows the real error, the actual API root, and a
+  Retry button.
+- src/lib/currentUser.js — reads name/email/role from the real session instead
+  of a hardcoded stub. Role still defaults to administrator; documented clearly
+  as a UI-only convenience since the backend authenticates but does not yet
+  authorise by role.
+- .env / .env.example — VITE_API_URL, VITE_SUPABASE_URL,
+  VITE_SUPABASE_PUBLISHABLE_KEY. .env confirmed gitignored.
+- Added dependency: @supabase/supabase-js.
+
+- backend/main.py — CORS: found during testing that Vite falls back to port 5174
+  when 5173 is taken, which the pinned origin list blocked. Replaced the fixed
+  localhost list with a regex covering any localhost/127.0.0.1 port (plus the
+  vercel/netlify/onrender hosts). NOT yet committed or deployed.
+
+VERIFIED
+- eslint clean; `npm run build` succeeds (1.06 MB bundle, pre-existing size warning)
+- Dev server serves 200; all 11 modified/new modules compile through Vite
+- 6/6 integration checks against the running backend:
+  CORS preflight from localhost:5174 echoes the origin; unauthenticated fetch
+  401s; Supabase sign-in 200; authenticated /api/dashboard and /api/settings
+  return 200 with a real payload (3 beds, 3 alerts, tank 71%)
+- Temporary fixture user deleted. NOTE: auth.users contains the real account
+  anesuk002@gmail.com (self-registered 10:04, confirmed, signed in) — left intact.
+
+NOT DONE (user asked to hold): the UI redesign / design system / dashboard
+rebuild from the audit. Dashboard.jsx is still the photo-slideshow hero that
+ignores its `data` prop, and 10 dashboard components remain orphaned.

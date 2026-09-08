@@ -5,7 +5,7 @@ import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme
 export type BadgeTone = 'success' | 'warning' | 'critical' | 'info' | 'neutral';
 
 const TONE_COLORS: Record<BadgeTone, { bg: string; fg: string }> = {
-  success: { bg: Colors.successLight, fg: Colors.primary },
+  success: { bg: Colors.successLight, fg: Colors.success },
   warning: { bg: Colors.warningLight, fg: '#B45309' },
   critical: { bg: Colors.criticalLight, fg: Colors.critical },
   info: { bg: Colors.infoLight, fg: Colors.info },

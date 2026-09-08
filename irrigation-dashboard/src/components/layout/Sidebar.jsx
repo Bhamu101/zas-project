@@ -23,18 +23,14 @@ export default function Sidebar({ activePage, onNavigate, open = true }) {
       }`}
     >
       <div className="relative w-full h-full overflow-hidden flex flex-col p-3">
-        <div
-          className="absolute inset-0 -z-20 bg-cover bg-center scale-110"
-          style={{ backgroundImage: 'url(/images/plant-bg.jpg)', filter: 'blur(14px)' }}
-        />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand/28 to-brand-dark/32" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-brand to-brand-dark" />
 
-        <div className="flex items-center gap-3 px-2 pt-2 pb-4 mb-2 border-b border-white/15">
-          <Leaf size={26} className="text-white shrink-0" strokeWidth={1.75} />
+        <div className="flex items-center gap-3 px-2 pt-2 pb-4 mb-2 border-b border-black/10">
+          <Leaf size={26} className="text-[#0f0f0f] shrink-0" strokeWidth={1.75} />
           {open && (
             <div className="min-w-0">
-              <p className="text-sm font-bold text-white leading-tight truncate">Farm Manager</p>
-              <p className="text-[11px] text-white/70 leading-tight truncate">Smart Farming, Better Future</p>
+              <p className="text-sm font-bold text-[#0f0f0f] leading-tight truncate">Farm Manager</p>
+              <p className="text-[11px] text-[#0f0f0f]/60 leading-tight truncate">Smart Farming, Better Future</p>
             </div>
           )}
         </div>
@@ -48,7 +44,9 @@ export default function Sidebar({ activePage, onNavigate, open = true }) {
               className={`w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
                 open ? "justify-start" : "justify-center"
               } ${
-                activePage === id ? "bg-white text-brand-dark" : "text-white/90 hover:bg-white/10"
+                activePage === id
+                  ? "bg-[#0f0f0f] text-[#c7ff2e] shadow-sm"
+                  : "text-[#0f0f0f]/80 hover:bg-black/10"
               }`}
             >
               <Icon size={18} strokeWidth={1.75} className="shrink-0" />

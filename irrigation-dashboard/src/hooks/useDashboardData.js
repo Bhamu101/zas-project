@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-const API_URL = "http://localhost:8021/api/dashboard";
+import { apiFetch } from "../lib/apiClient";
+
 const POLL_INTERVAL_MS = 15000;
 
 export function useDashboardData() {
@@ -10,11 +11,7 @@ export function useDashboardData() {
   const cancelledRef = useRef(false);
 
   const refetch = useCallback(() => {
-    return fetch(API_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Server responded ${res.status}`);
-        return res.json();
-      })
+    return apiFetch("/api/dashboard")
       .then((json) => {
         if (cancelledRef.current) return;
         setData(json);

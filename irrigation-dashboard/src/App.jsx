@@ -12,11 +12,12 @@ import DataReports from "./pages/DataReports";
 import AlertsPage from "./pages/AlertsPage";
 import SystemSettings from "./pages/SystemSettings";
 import { useDashboardData } from "./hooks/useDashboardData";
+import { getApiRoot } from "./lib/apiClient";
 
 function App() {
   const [activePage, setActivePage] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { data, error, loading } = useDashboardData();
+  const { data, error, loading, refetch } = useDashboardData();
 
   if (loading) {
     return (
@@ -28,9 +29,16 @@ function App() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-red-500 font-display px-6 text-center">
-        Could not reach the backend at localhost:8000.<br />
-        Is the FastAPI server running? ({error})
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center font-display">
+        <p className="text-base font-bold text-ink">Could not load farm data</p>
+        <p className="max-w-md text-sm text-muted">{error}</p>
+        <p className="text-xs text-muted">Backend: {getApiRoot()}</p>
+        <button
+          onClick={refetch}
+          className="mt-1 rounded-xl bg-brand px-4 py-2 text-sm font-bold"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -49,7 +57,6 @@ function App() {
       case "energy": return (
         <EnergyManagement
           kpis={data.kpis}
-          energyHistory={data.energyHistory}
           energyOverview={data.energyOverview}
           onNavigate={setActivePage}
         />
@@ -66,7 +73,7 @@ function App() {
       case "aerial-view": return <AerialView />;
       case "reports": return <DataReports seasonSummary={data.seasonSummary} dataReports={data.dataReports} />;
       case "alerts": return <AlertsPage alerts={data.alerts} />;
-      case "settings": return <SystemSettings systemInfo={data.systemInfo} />;
+      case "settings": return <SystemSettings dashboard={data} />;
       default: return <Dashboard data={data} />;
     }
   }

@@ -52,7 +52,8 @@
           "cameraPermission": "Agri-Intelligence needs camera access so you can photograph a plant to diagnose."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

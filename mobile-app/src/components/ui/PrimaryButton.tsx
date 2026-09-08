@@ -17,7 +17,10 @@ interface Props {
 export function PrimaryButton({ title, onPress, disabled, loading, variant = 'primary', icon }: Props) {
   const isOutline = variant === 'outline' || variant === 'outlineLight';
   const bg = variant === 'danger' ? Colors.critical : variant === 'primary' ? Colors.primary : 'transparent';
-  const outlineColor = variant === 'outlineLight' ? Colors.textOnPrimary : Colors.primary;
+  const outlineColor = variant === 'outlineLight' ? Colors.textOnPrimary : Colors.primaryDark;
+  // The lime `primary` fill is too light for white text — use near-black instead;
+  // 'danger' (red) and 'outlineLight' (on a dark bg) keep white, which still reads fine there.
+  const filledLabelColor = variant === 'primary' ? Colors.primaryDark : Colors.textOnPrimary;
 
   return (
     <Pressable
@@ -32,11 +35,11 @@ export function PrimaryButton({ title, onPress, disabled, loading, variant = 'pr
       ]}>
       <View style={styles.content}>
         {loading ? (
-          <ActivityIndicator color={isOutline ? outlineColor : Colors.textOnPrimary} />
+          <ActivityIndicator color={isOutline ? outlineColor : filledLabelColor} />
         ) : (
           <>
             {icon}
-            <Text style={[styles.label, isOutline && { color: outlineColor }]}>{title}</Text>
+            <Text style={[styles.label, { color: isOutline ? outlineColor : filledLabelColor }]}>{title}</Text>
           </>
         )}
       </View>

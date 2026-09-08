@@ -1,7 +1,4 @@
 import { useState } from "react";
-import {
-  Power, Battery, Sun, Zap, BatteryCharging, Gauge, Leaf, TrendingUp, TrendingDown, Info,
-} from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import BatteryBars from "../components/energy/BatteryBars";
 import SmartPowerRecommendation from "../components/energy/SmartPowerRecommendation";
@@ -9,36 +6,17 @@ import LiveOperationsSimulator from "../components/energy/LiveOperationsSimulato
 import GridChangeoverSimulation from "../components/energy/GridChangeoverSimulation";
 import EnergySavingsCard from "../components/energy/EnergySavingsCard";
 
-const statIconMap = {
-  "Solar Energy Generated": Sun,
-  "Grid Energy Used": Zap,
-  "Battery Discharge": Battery,
-  "Battery Charge": BatteryCharging,
-  "Self Consumption": Gauge,
-  "CO2 Avoided": Leaf,
-};
-const statColorMap = {
-  "Solar Energy Generated": "text-amber-500",
-  "Grid Energy Used": "text-red-500",
-  "Battery Discharge": "text-blue-500",
-  "Battery Charge": "text-blue-500",
-  "Self Consumption": "text-brand",
-  "CO2 Avoided": "text-brand",
-};
-
 function DeltaTag({ value, goodDirection = "up" }) {
   const isUp = value >= 0;
   const isGood = goodDirection === "up" ? isUp : !isUp;
-  const Icon = isUp ? TrendingUp : TrendingDown;
   return (
     <span className={`inline-flex items-center gap-0.5 text-xs font-semibold shrink-0 ${isGood ? "text-brand" : "text-red-500"}`}>
-      <Icon size={12} />
-      {Math.abs(value)}%
+      {value >= 0 ? "+" : "−"}{Math.abs(value)}%
     </span>
   );
 }
 
-export default function EnergyManagement({ kpis, energyHistory, energyOverview, onNavigate }) {
+export default function EnergyManagement({ kpis, energyOverview, onNavigate }) {
   const [liveBattery, setLiveBattery] = useState(kpis.batteryPct ?? 50);
   const [atsSource, setAtsSource] = useState(null);
 
@@ -52,10 +30,7 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Power size={18} className="text-amber-500" />
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Active Source</p>
-          </div>
+          <p className="text-xs font-bold tracking-wide text-muted uppercase mb-3">Active Source</p>
           <p className="text-3xl font-bold text-amber-500">{energyOverview?.activeSource.label ?? kpis.energySource}</p>
           <p className="text-sm text-muted mt-1">ATS auto-switching enabled</p>
           {energyOverview?.activeSource.status && (
@@ -66,10 +41,7 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
         </div>
 
         <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Battery size={18} className="text-blue-500" />
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Battery Level</p>
-          </div>
+          <p className="text-xs font-bold tracking-wide text-muted uppercase mb-3">Battery Level</p>
           <p className="text-3xl font-bold text-ink">{Math.round(liveBattery)}%</p>
           <BatteryBars pct={liveBattery} className="mt-3" />
           {energyOverview?.battery && (
@@ -95,10 +67,7 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
         <div className="lg:col-span-2 bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-          <div className="flex items-center gap-1.5 mb-3 shrink-0">
-            <h3 className="text-xs font-bold text-ink">POWER CONSUMPTION (TODAY)</h3>
-            <Info size={13} className="text-muted" />
-          </div>
+          <h3 className="text-xs font-bold text-ink mb-3 shrink-0">POWER CONSUMPTION (TODAY)</h3>
 
           {energyOverview?.powerConsumption && (
             <div className="flex items-end gap-3 mb-3 shrink-0">
@@ -141,22 +110,15 @@ export default function EnergyManagement({ kpis, energyHistory, energyOverview, 
         </div>
 
         <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-          <div className="flex items-center gap-1.5 mb-3 shrink-0">
-            <h3 className="text-xs font-bold text-ink">ENERGY STATISTICS</h3>
-            <Info size={13} className="text-muted" />
-          </div>
+          <h3 className="text-xs font-bold text-ink mb-3 shrink-0">ENERGY STATISTICS</h3>
           <div className="space-y-3 flex-1">
-            {energyOverview?.stats.map((s) => {
-              const Icon = statIconMap[s.label] || Zap;
-              return (
-                <div key={s.label} className="flex items-center gap-2.5">
-                  <Icon size={16} className={`${statColorMap[s.label] || "text-muted"} shrink-0`} />
-                  <p className="text-xs text-ink flex-1 min-w-0 truncate">{s.label}</p>
-                  <p className="text-xs font-bold text-ink shrink-0">{s.value}</p>
-                  <DeltaTag value={s.deltaPct} goodDirection={s.goodDirection} />
-                </div>
-              );
-            })}
+            {energyOverview?.stats.map((s) => (
+              <div key={s.label} className="flex items-center gap-2.5">
+                <p className="text-xs text-ink flex-1 min-w-0 truncate">{s.label}</p>
+                <p className="text-xs font-bold text-ink shrink-0">{s.value}</p>
+                <DeltaTag value={s.deltaPct} goodDirection={s.goodDirection} />
+              </div>
+            ))}
           </div>
           <button
             onClick={() => onNavigate?.("reports")}

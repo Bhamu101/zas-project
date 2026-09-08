@@ -1,10 +1,9 @@
 import { Droplets, Gauge, Minus, Plus, TrendingDown } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CircularProgress } from '@/components/dashboard/CircularProgress';
-import { SimpleBarChart } from '@/components/dashboard/SimpleBarChart';
 import { Card } from '@/components/ui/Card';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
@@ -13,6 +12,7 @@ import { ErrorState, LoadingState } from '@/components/ui/States';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
 import { CROPS } from '@/data/crops';
+import { confirmAction, notify } from '@/lib/alert';
 import { getRecommendations } from '@/services/recommendationEngine';
 import { ApiError, api } from '@/services/api';
 import { useDashboardStore } from '@/store/dashboardStore';
@@ -28,7 +28,7 @@ export default function WaterScreen() {
   const [busy, setBusy] = useState(false);
 
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return <LoadingState label="Loading water data…" />;
+  if (!data) return <LoadingState variant="water" />;
 
   const bed = data.beds.find((b) => b.id === selectedBedId) ?? data.beds[0];
   const crop = CROPS.find((c) => c.id === cropId) ?? CROPS[0];
@@ -38,44 +38,37 @@ export default function WaterScreen() {
   const { kpis, extendedStats, mobileExtras } = data;
 
   async function handleStart() {
-    Alert.alert('Start irrigation', `Run ${bed.name} for ${duration} minutes?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Start',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await api.startIrrigation(bed.id, duration);
-            await fetchNow();
-          } catch (e) {
-            Alert.alert('Could not start irrigation', e instanceof ApiError ? e.message : 'Unknown error');
-          } finally {
-            setBusy(false);
-          }
-        },
-      },
-    ]);
+    confirmAction('Start irrigation', `Run ${bed.name} for ${duration} minutes?`, 'Start', async () => {
+      setBusy(true);
+      try {
+        await api.startIrrigation(bed.id, duration);
+        await fetchNow();
+      } catch (e) {
+        notify('Could not start irrigation', e instanceof ApiError ? e.message : 'Unknown error');
+      } finally {
+        setBusy(false);
+      }
+    });
   }
 
   async function handleStop() {
-    Alert.alert('Stop irrigation', `Stop the irrigation cycle for ${bed.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Stop',
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          try {
-            await api.stopIrrigation(bed.id);
-            await fetchNow();
-          } catch (e) {
-            Alert.alert('Could not stop irrigation', e instanceof ApiError ? e.message : 'Unknown error');
-          } finally {
-            setBusy(false);
-          }
-        },
+    confirmAction(
+      'Stop irrigation',
+      `Stop the irrigation cycle for ${bed.name}?`,
+      'Stop',
+      async () => {
+        setBusy(true);
+        try {
+          await api.stopIrrigation(bed.id);
+          await fetchNow();
+        } catch (e) {
+          notify('Could not stop irrigation', e instanceof ApiError ? e.message : 'Unknown error');
+        } finally {
+          setBusy(false);
+        }
       },
-    ]);
+      { destructive: true }
+    );
   }
 
   return (
@@ -99,7 +92,7 @@ export default function WaterScreen() {
             percent={bed.vwc}
             size={128}
             strokeWidth={12}
-            color={bed.vwc >= data.systemInfo.vwcOptimalMin ? Colors.primary : Colors.warning}
+            color={bed.vwc >= data.systemInfo.vwcOptimalMin ? Colors.success : Colors.warning}
             label="Moisture"
           />
           <View style={{ flex: 1, gap: Spacing.xs }}>
@@ -155,16 +148,6 @@ export default function WaterScreen() {
           )}
         </Card>
 
-        <Card>
-          <Text style={styles.cardTitle}>Daily Water Usage (L)</Text>
-          <SimpleBarChart
-            labels={mobileExtras.dailyUsageLabels}
-            values={mobileExtras.dailyUsageSeriesL}
-            color={Colors.primary}
-            height={140}
-          />
-        </Card>
-
         <View>
           <Text style={styles.sectionLabel}>Irrigation History</Text>
           <View style={{ gap: Spacing.sm }}>
@@ -189,7 +172,7 @@ export default function WaterScreen() {
 function MiniMetric({ icon: Icon, label, value }: { icon: typeof Droplets; label: string; value: string }) {
   return (
     <Card style={styles.miniMetric}>
-      <Icon size={16} color={Colors.primary} />
+      <Icon size={16} color={Colors.primaryDark} />
       <Text style={styles.miniValue}>{value}</Text>
       <Text style={styles.mutedText}>{label}</Text>
     </Card>
@@ -215,7 +198,7 @@ const styles = StyleSheet.create({
   heroCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
   heroLabel: { fontSize: FontSize.caption, color: Colors.textSecondary, fontFamily: FontFamily.medium },
   heroValue: { fontSize: FontSize.heading, fontFamily: FontFamily.bold, color: Colors.text },
-  recCard: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary, gap: Spacing.xs },
+  recCard: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, gap: Spacing.xs },
   recTitle: { fontSize: FontSize.body, fontFamily: FontFamily.bold, color: Colors.primaryDark },
   metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
   miniMetric: { flexBasis: '47%', flexGrow: 1, gap: Spacing.xs },

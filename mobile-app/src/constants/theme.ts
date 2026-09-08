@@ -4,32 +4,37 @@
  * RN 0.86 and is too new to safely layer a Babel-based styling toolchain on top of
  * right now, so the design system lives here instead.
  *
- * Palette direction: deep agricultural green for nav/important text, a bright
- * fresh lime-green reserved for primary actions and active states only, white
- * cards on an off-white/light-green background, charcoal body text, muted grey
- * for secondary text, and red/orange used only for warnings.
+ * Palette: near-black + neon lime brand accent, on white cards, per a supplied
+ * reference. IMPORTANT: `primary` (the lime) is bright enough that it fails
+ * contrast as small text/icon color on white — use it only for FILLS (button
+ * backgrounds, active-state chips/tabs, progress rings, chart lines/bars) and
+ * for text/icons on genuinely dark backgrounds. Anywhere brand color is needed
+ * as legible text/icon color on a light surface, use `primaryDark` (near-black)
+ * instead — never bare `primary` for that. `success`/`warning`/`critical`/`info`
+ * are intentionally independent of `primary` (not aliased to it) so status
+ * semantics (e.g. "optimal"/"healthy") stay legible regardless of brand color.
  */
 import { Platform } from 'react-native';
 
 export const Colors = {
   // Brand
-  primary: '#3FA34D', // bright fresh green — CTAs, active states, progress fills only
-  primaryDark: '#2E7D3A', // pressed state for primary
-  primaryLight: '#E6F4E1', // light green tint — chips, subtle section backgrounds
-  deep: '#173A2E', // deep agricultural green — nav/header text, splash background
+  primary: '#C7FF2E', // neon lime — fills only: buttons, active chips/tabs, progress rings/bars
+  primaryDark: '#0F0F0F', // near-black — brand-accent TEXT/ICON on light surfaces (lime fails contrast there)
+  primaryLight: '#F2FFDC', // light lime tint — chip/badge backgrounds
+  deep: '#0F0F0F', // near-black — splash/hero dark backgrounds
 
   // Neutrals (60% of the UI)
-  background: '#F7FAF5',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  border: '#E7ECE4',
+  border: '#E2E2E2',
 
   // Text
-  text: '#20261F', // dark charcoal (green-tinted) — primary text
-  textSecondary: '#6B7280', // muted grey — secondary info
-  textMuted: '#9CA3AF',
+  text: '#0F0F0F', // near-black — primary text
+  textSecondary: '#808080', // mid grey — secondary info
+  textMuted: '#A6A6A6',
   textOnPrimary: '#FFFFFF',
 
-  // Status — used sparingly, only for warnings/abnormal readings
+  // Status — deliberately independent of `primary` (see note above)
   warning: '#F59E0B',
   warningLight: '#FFF6E5',
   critical: '#E53935',
@@ -48,7 +53,7 @@ export const Spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 48,
-  huge: 64,
+  huge: 140, // clears the floating pill tab bar (64 tall, 24 from the bottom, plus safe-area inset)
 } as const;
 
 export const Radius = {
@@ -68,6 +73,10 @@ export const FontFamily = {
   medium: 'PlusJakartaSans_500Medium',
   semibold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
+  // High-contrast Didone display serif — used for the splash wordmark (a free
+  // stand-in for Marqen Serif). Reserve for large display text; it's not a
+  // body face.
+  serif: 'PlayfairDisplay_700Bold',
 } as const;
 
 export const FontSize = {
@@ -87,7 +96,7 @@ export const FontWeight = {
 
 export const Shadow = Platform.select({
   ios: {
-    shadowColor: '#173A2E',
+    shadowColor: '#0F0F0F',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.06,
     shadowRadius: 16,

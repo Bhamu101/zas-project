@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const DIAGNOSE_URL = "http://localhost:8021/api/crop-health/diagnose";
+import { apiFetch } from "../lib/apiClient";
 
 const STATUS_META = {
   healthy: { label: "Healthy", icon: CheckCircle2, color: "#15803d", bg: "#15803d1a" },
@@ -56,16 +56,10 @@ export default function CropHealth() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(DIAGNOSE_URL, {
+      const data = await apiFetch("/api/crop-health/diagnose", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, cropName: "Rape / Covo" }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Server responded ${res.status}`);
-      }
-      const data = await res.json();
       setDiagnosis(data.diagnosis);
     } catch (err) {
       setError(err.message);

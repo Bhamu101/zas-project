@@ -32,3 +32,10 @@ npm-debug.log*
 !.vscode/extensions.json
 .idea
 .DS_Store
+
+# Claude Design canvas artifacts — local authoring scratch, not project source.
+# Main.dc.html references a support.js that isn't tracked, and the published
+# circuit page is a multi-MB single file; both are kept out of git history.
+Main.dc.html
+canvas.json
+bed1-irrigation-circuit.html

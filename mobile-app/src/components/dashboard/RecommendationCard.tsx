@@ -3,17 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
-import { StatusBadge, type BadgeTone } from '@/components/ui/StatusBadge';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
 import type { Recommendation } from '@/types';
 
-const SEVERITY_META: Record<
-  Recommendation['severity'],
-  { icon: typeof Droplets; tone: string; bg: string; priority: string; badgeTone: BadgeTone }
-> = {
-  urgent: { icon: Droplets, tone: Colors.critical, bg: Colors.criticalLight, priority: 'Important', badgeTone: 'critical' },
-  suggested: { icon: Droplets, tone: '#B45309', bg: Colors.warningLight, priority: 'Recommended', badgeTone: 'warning' },
-  none: { icon: CheckCircle2, tone: Colors.primaryDark, bg: Colors.successLight, priority: 'Good', badgeTone: 'success' },
+const SEVERITY_META: Record<Recommendation['severity'], { icon: typeof Droplets; tone: string; priority: string }> = {
+  urgent: { icon: Droplets, tone: Colors.critical, priority: 'Important' },
+  suggested: { icon: Droplets, tone: '#B45309', priority: 'Recommended' },
+  none: { icon: CheckCircle2, tone: Colors.primaryDark, priority: 'Good' },
 };
 
 export function RecommendationCard({
@@ -31,14 +27,14 @@ export function RecommendationCard({
   return (
     <Card style={{ gap: Spacing.md }}>
       <View style={styles.headerRow}>
-        <View style={[styles.iconWrap, { backgroundColor: meta.bg }]}>
-          <Icon size={20} color={meta.tone} />
+        <View style={styles.iconWrap}>
+          <Icon size={26} color={meta.tone} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.headline, { color: meta.tone }]}>{recommendation.headline}</Text>
           <Text style={styles.bedName}>{recommendation.bedName}</Text>
         </View>
-        <StatusBadge label={meta.priority} tone={meta.badgeTone} />
+        <Text style={[styles.priorityText, { color: meta.tone }]}>{meta.priority}</Text>
       </View>
 
       <Text style={styles.message}>{recommendation.message}</Text>
@@ -69,11 +65,18 @@ export function RecommendationCard({
 
 const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', gap: Spacing.md, alignItems: 'center' },
-  iconWrap: { width: 40, height: 40, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { alignItems: 'center', justifyContent: 'center' },
+  priorityText: { fontSize: FontSize.caption, fontFamily: FontFamily.bold },
   headline: { fontSize: FontSize.subtitle, fontFamily: FontFamily.bold },
   bedName: { fontSize: FontSize.caption, color: Colors.textSecondary, marginTop: 2 },
   message: { fontSize: FontSize.body, color: Colors.textSecondary, lineHeight: 20 },
-  reasonsBox: { backgroundColor: Colors.background, borderRadius: Radius.md, padding: Spacing.md, gap: Spacing.xs },
+  reasonsBox: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
   reasonsTitle: { fontSize: FontSize.caption, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.xs },
   reasonRow: { flexDirection: 'row', justifyContent: 'space-between' },
   reasonLabel: { fontSize: FontSize.caption, color: Colors.textSecondary },

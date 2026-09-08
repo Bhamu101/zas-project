@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Bot, Send, User, AlertTriangle } from "lucide-react";
 
-const CHAT_URL = "http://localhost:8021/api/assistant/chat";
+import { apiFetch } from "../lib/apiClient";
 
 const GREETING = {
   role: "assistant",
@@ -30,18 +30,16 @@ export default function AIAssistant() {
     setLoading(true);
 
     try {
-      const res = await fetch(CHAT_URL, {
+      const data = await apiFetch("/api/assistant/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+          // The backend caps history at 40 messages, so send the most recent
+          // ones rather than letting a long session start failing validation.
+          messages: nextMessages
+            .slice(-40)
+            .map((m) => ({ role: m.role, content: m.content })),
         }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Server responded ${res.status}`);
-      }
-      const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
     } catch (err) {
       setError(err.message);
@@ -63,7 +61,6 @@ export default function AIAssistant() {
         <Bot size={18} className="text-brand" />
         <div>
           <h2 className="text-sm font-bold text-ink">Goho AI</h2>
-          <p className="text-xs text-muted">Ask about your beds, irrigation, or energy system</p>
         </div>
       </div>
 

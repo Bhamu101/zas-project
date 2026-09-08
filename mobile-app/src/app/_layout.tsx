@@ -1,3 +1,4 @@
+import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -28,6 +29,7 @@ export default function RootLayout() {
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
+    PlayfairDisplay_700Bold,
   });
 
   useEffect(() => {

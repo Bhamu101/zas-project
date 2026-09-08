@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card } from '@/components/ui/Card';
-import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
+import { Colors, FontFamily, FontSize, Spacing } from '@/constants/theme';
 
 interface Props {
   icon: LucideIcon;
@@ -24,7 +24,7 @@ export function MetricCard({ icon: Icon, label, value, status, tone = 'neutral' 
   return (
     <Card style={styles.card}>
       <View style={styles.iconWrap}>
-        <Icon size={18} color={Colors.primaryDark} />
+        <Icon size={30} color={Colors.primaryDark} />
       </View>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value}</Text>
@@ -36,10 +36,6 @@ export function MetricCard({ icon: Icon, label, value, status, tone = 'neutral' 
 const styles = StyleSheet.create({
   card: { flexBasis: '47%', flexGrow: 1, gap: Spacing.xs },
   iconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.xs,

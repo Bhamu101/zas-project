@@ -1,6 +1,5 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Droplet, Leaf, Thermometer, Wind, Zap } from 'lucide-react-native';
+import { ChevronLeft, Droplet, Wind, Zap } from 'lucide-react-native';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,7 +23,7 @@ export default function CropDetailScreen() {
   const farmProfile = useFarmStore((s) => s.profile);
 
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return <LoadingState />;
+  if (!data) return <LoadingState variant="cropDetail" />;
 
   const bed = data.beds.find((b) => String(b.id) === id);
   if (!bed) return <EmptyState title="Crop not found" message="This crop may have been removed." />;
@@ -37,82 +36,76 @@ export default function CropDetailScreen() {
   return (
     <SafeAreaView style={styles.flex} edges={['top']}>
       <ScreenBackground />
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
+          <ChevronLeft size={24} color={Colors.text} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerCrop}>{farmProfile?.mainCrop ?? crop.name}</Text>
+          <Text style={styles.headerBed}>{bed.name}</Text>
+        </View>
+        <StatusBadge label={bedStateLabel(bed.state)} tone={bedStateTone(bed.state)} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        <LinearGradient colors={[Colors.deep, '#2C5F45']} style={styles.hero}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.backButton}>
-            <ChevronLeft size={22} color={Colors.textOnPrimary} />
-          </Pressable>
-          <Leaf size={40} color="rgba(255,255,255,0.35)" style={styles.heroLeaf} />
-          <View style={styles.heroBottom}>
-            <View>
-              <Text style={styles.heroCrop}>{farmProfile?.mainCrop ?? crop.name}</Text>
-              <Text style={styles.heroBed}>{bed.name}</Text>
-            </View>
-            <StatusBadge label={bedStateLabel(bed.state)} tone={bedStateTone(bed.state)} />
+        <Card style={styles.healthCard}>
+          <CircularProgress percent={health} size={88} strokeWidth={9} label="Health" />
+          <View style={{ flex: 1, gap: Spacing.xs }}>
+            <Text style={styles.cardTitle}>Health Score</Text>
+            <Text style={styles.mutedText}>
+              Derived from soil moisture vs. {crop.name}&apos;s optimal range ({data.systemInfo.vwcOptimalMin}%–
+              {data.systemInfo.vwcOptimalMax}%).
+            </Text>
           </View>
-        </LinearGradient>
+        </Card>
 
-        <View style={styles.body}>
-          <Card style={styles.healthCard}>
-            <CircularProgress percent={health} size={88} strokeWidth={9} label="Health" />
-            <View style={{ flex: 1, gap: Spacing.xs }}>
-              <Text style={styles.cardTitle}>Health Score</Text>
-              <Text style={styles.mutedText}>
-                Derived from soil moisture vs. {crop.name}&apos;s optimal range ({data.systemInfo.vwcOptimalMin}%–
-                {data.systemInfo.vwcOptimalMax}%).
-              </Text>
-            </View>
+        <Card style={{ gap: Spacing.md }}>
+          <Text style={styles.cardTitle}>Current Conditions</Text>
+          <View style={styles.statGrid}>
+            <ConditionStat icon={Droplet} label="Soil moisture" value={`${bed.vwc}%`} />
+            <ConditionStat icon={Zap} label="Air temp" value={`${bed.airTempC}°C`} />
+            <ConditionStat icon={Wind} label="Humidity" value={`${bed.humidityPct}%`} />
+          </View>
+        </Card>
+
+        <Card style={{ gap: Spacing.sm }}>
+          <Text style={styles.cardTitle}>Requirements — {crop.name}</Text>
+          <SummaryRow label="Minimum moisture" value={`${crop.minMoisturePct}%`} />
+          <SummaryRow label="Optimal moisture" value={`${crop.optimalMinPct}%–${crop.optimalMaxPct}%`} />
+          <SummaryRow label="Temperature range" value={`${crop.tempMinC}°C–${crop.tempMaxC}°C`} last />
+        </Card>
+
+        {recommendation && (
+          <Card style={styles.recCard}>
+            <Text style={styles.recTitle}>Recommended Action</Text>
+            <Text style={styles.mutedText}>{recommendation.message}</Text>
           </Card>
+        )}
 
-          <Card style={{ gap: Spacing.md }}>
-            <Text style={styles.cardTitle}>Current Conditions</Text>
-            <View style={styles.statGrid}>
-              <ConditionStat icon={Droplet} label="Soil moisture" value={`${bed.vwc}%`} />
-              <ConditionStat icon={Thermometer} label="Soil temp" value={`${bed.soilTempC}°C`} />
-              <ConditionStat icon={Zap} label="Air temp" value={`${bed.airTempC}°C`} />
-              <ConditionStat icon={Wind} label="Humidity" value={`${bed.humidityPct}%`} />
-            </View>
-          </Card>
+        <Card>
+          <Text style={styles.cardTitle}>Moisture History</Text>
+          <LineSparkline data={bed.trendVwc} color={Colors.primary} width={296} height={80} />
+        </Card>
 
-          <Card style={{ gap: Spacing.sm }}>
-            <Text style={styles.cardTitle}>Requirements — {crop.name}</Text>
-            <SummaryRow label="Minimum moisture" value={`${crop.minMoisturePct}%`} />
-            <SummaryRow label="Optimal moisture" value={`${crop.optimalMinPct}%–${crop.optimalMaxPct}%`} />
-            <SummaryRow label="Temperature range" value={`${crop.tempMinC}°C–${crop.tempMaxC}°C`} last />
-          </Card>
-
-          {recommendation && (
-            <Card style={styles.recCard}>
-              <Text style={styles.recTitle}>Recommended Action</Text>
-              <Text style={styles.mutedText}>{recommendation.message}</Text>
+        <View>
+          <Text style={styles.sectionLabel}>Recent Activity</Text>
+          {relatedActivity.length === 0 ? (
+            <Card>
+              <Text style={styles.mutedText}>No recent activity logged for this crop.</Text>
             </Card>
+          ) : (
+            <View style={{ gap: Spacing.sm }}>
+              {relatedActivity.map((a) => (
+                <Card key={a.id} style={styles.activityRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.activityTitle}>{a.title}</Text>
+                    <Text style={styles.mutedText}>{a.subtitle}</Text>
+                  </View>
+                  <Text style={styles.mutedText}>{a.time}</Text>
+                </Card>
+              ))}
+            </View>
           )}
-
-          <Card>
-            <Text style={styles.cardTitle}>Moisture History</Text>
-            <LineSparkline data={bed.trendVwc} color={Colors.primary} width={296} height={80} />
-          </Card>
-
-          <View>
-            <Text style={styles.sectionLabel}>Recent Activity</Text>
-            {relatedActivity.length === 0 ? (
-              <Card>
-                <Text style={styles.mutedText}>No recent activity logged for this crop.</Text>
-              </Card>
-            ) : (
-              <View style={{ gap: Spacing.sm }}>
-                {relatedActivity.map((a) => (
-                  <Card key={a.id} style={styles.activityRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.activityTitle}>{a.title}</Text>
-                      <Text style={styles.mutedText}>{a.subtitle}</Text>
-                    </View>
-                    <Text style={styles.mutedText}>{a.time}</Text>
-                  </Card>
-                ))}
-              </View>
-            )}
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -140,21 +133,18 @@ function SummaryRow({ label, value, last }: { label: string; value: string; last
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: 'transparent' },
-  content: { gap: Spacing.lg, paddingBottom: Spacing.huge },
-  hero: { height: 200, padding: Spacing.lg, justifyContent: 'space-between' },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  content: { paddingHorizontal: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.huge },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
   },
-  heroLeaf: { position: 'absolute', right: Spacing.xl, top: Spacing.xxl },
-  heroBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  heroCrop: { color: Colors.textOnPrimary, fontSize: FontSize.metric, fontFamily: FontFamily.bold },
-  heroBed: { color: 'rgba(255,255,255,0.8)', fontSize: FontSize.body, fontFamily: FontFamily.medium },
-  body: { paddingHorizontal: Spacing.xl, gap: Spacing.lg },
+  backButton: { width: 40, height: 40, justifyContent: 'center' },
+  headerCrop: { color: Colors.text, fontSize: FontSize.subtitle, fontFamily: FontFamily.bold },
+  headerBed: { color: Colors.textSecondary, fontSize: FontSize.caption, fontFamily: FontFamily.medium },
   healthCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
   cardTitle: { fontSize: FontSize.subtitle, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.xs },
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.lg },
@@ -164,7 +154,7 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: Spacing.sm },
   summaryRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.border },
   summaryValue: { fontSize: FontSize.body, fontFamily: FontFamily.semibold, color: Colors.text },
-  recCard: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary, gap: Spacing.xs },
+  recCard: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, gap: Spacing.xs },
   recTitle: { fontSize: FontSize.body, fontFamily: FontFamily.bold, color: Colors.primaryDark },
   sectionLabel: { fontSize: FontSize.subtitle, fontFamily: FontFamily.bold, color: Colors.text, marginBottom: Spacing.sm },
   activityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.md },

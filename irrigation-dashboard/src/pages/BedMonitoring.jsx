@@ -1,5 +1,5 @@
 import {
-  Sprout, ShieldAlert, AlertTriangle, CheckCircle2, Droplets, Droplet, Thermometer, Eye, Check,
+  Sprout, ShieldAlert, AlertTriangle, CheckCircle2, Droplets, Droplet, Eye, Check,
   Clock, MapPin,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceArea } from "recharts";
@@ -59,16 +59,22 @@ function RangeBar({ vwc, trigger, optMin, optMax, color }) {
           <div className="bg-brand" style={{ width: `${Math.max(0, optMax - optMin)}%` }} />
           <div className="bg-gray-200" style={{ width: `${Math.max(0, 100 - optMax)}%` }} />
         </div>
-        <div className="flex justify-between text-[10px] text-muted mt-1">
-          <span>0%</span>
-          <span>100%</span>
-        </div>
-        <div className="relative h-3">
-          {[trigger, optMin, optMax].map((t) => (
-            <span key={t} className="absolute -translate-x-1/2 text-[10px] text-muted" style={{ left: `${t}%` }}>
-              {t}%
-            </span>
-          ))}
+        <div className="relative h-3 mt-1.5 text-[10px] text-muted">
+          {[...new Set([0, trigger, optMin, optMax, 100])]
+            .sort((a, b) => a - b)
+            .map((tick) => (
+              <span
+                key={tick}
+                className="absolute tabular-nums"
+                style={{
+                  left: `${tick}%`,
+                  transform:
+                    tick === 0 ? "none" : tick === 100 ? "translateX(-100%)" : "translateX(-50%)",
+                }}
+              >
+                {tick}%
+              </span>
+            ))}
         </div>
       </div>
     </div>
@@ -87,11 +93,8 @@ function BedCard({ bed, systemInfo, onNavigate }) {
         <h3 className="text-xl font-bold text-ink whitespace-nowrap">
           {bed.name}{t.crop ? `: ${t.crop}` : ""}
         </h3>
-        <span
-          className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${s.badgeText}`}
-          style={{ backgroundColor: `${s.hex}1a` }}
-        >
-          {s.label.toUpperCase()}
+        <span className={`text-sm font-bold lowercase first-letter:uppercase whitespace-nowrap ${s.badgeText}`}>
+          {s.label}
         </span>
       </div>
 
@@ -106,13 +109,6 @@ function BedCard({ bed, systemInfo, onNavigate }) {
       <div className="flex items-center justify-between text-xs text-muted mt-3 pt-3 border-t border-gray-100">
         <span>{t.crop ? `${t.crop} optimal` : "Optimal range"}: {t.vwcOptimalMin}% - {t.vwcOptimalMax}%</span>
         <span>Trigger: &lt; {t.vwcTrigger}%</span>
-      </div>
-
-      <div className="flex items-center justify-between mt-3">
-        <span className="flex items-center gap-1.5 text-xs text-muted">
-          <Thermometer size={14} /> Soil Temperature
-        </span>
-        <span className="text-sm font-bold text-ink">{bed.soilTempC}&deg;C</span>
       </div>
 
       <div className="flex items-center gap-1.5 mt-3 text-xs font-medium" style={{ color: s.hex }}>

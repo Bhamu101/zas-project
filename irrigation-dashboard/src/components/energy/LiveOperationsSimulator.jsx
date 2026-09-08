@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Droplets, BatteryCharging, BatteryLow, Battery, Zap, Activity } from "lucide-react";
 import BatteryBars from "./BatteryBars";
 
 // Client-side model that keeps the page alive between backend polls: the
@@ -71,21 +70,14 @@ export default function LiveOperationsSimulator({ batteryPct = 50, irrigationSta
 
   const { text: battText } = batteryColor(simBattery);
   const isCharging = (activeSourceLabel || "").toLowerCase().includes("solar") && !irrigating;
-  const BatteryIcon = simBattery < 20 ? BatteryLow : isCharging ? BatteryCharging : Battery;
 
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Activity size={18} className="text-brand" />
-        <h2 className="text-sm font-bold text-ink">LIVE OPERATIONS</h2>
-      </div>
+      <h2 className="text-sm font-bold text-ink mb-4">LIVE OPERATIONS</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Droplets size={16} className={irrigating ? "text-blue-500" : "text-muted"} />
-            <span className="text-xs font-bold text-muted uppercase tracking-wide">Irrigation</span>
-          </div>
+          <span className="block text-xs font-bold text-muted uppercase tracking-wide mb-3">Irrigation</span>
           <p className={`text-xl font-bold ${irrigating ? "text-blue-500" : "text-ink"}`}>
             {irrigating ? "In Progress" : "Idle"}
           </p>
@@ -101,13 +93,9 @@ export default function LiveOperationsSimulator({ batteryPct = 50, irrigationSta
         </div>
 
         <div className="rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <BatteryIcon size={16} className={battText} />
-            <span className="text-xs font-bold text-muted uppercase tracking-wide">Battery (live)</span>
-          </div>
+          <span className="block text-xs font-bold text-muted uppercase tracking-wide mb-3">Battery (live)</span>
           <p className={`text-xl font-bold ${battText}`}>{simBattery.toFixed(1)}%</p>
-          <p className="text-xs text-muted mt-1 flex items-center gap-1">
-            <Zap size={11} className={battText} />
+          <p className="text-xs text-muted mt-1">
             {(activeSourceLabel || "").toLowerCase().includes("battery")
               ? "Discharging to power the farm"
               : (activeSourceLabel || "").toLowerCase().includes("solar")

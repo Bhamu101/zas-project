@@ -11,6 +11,18 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300..700;1,300..700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Apply the saved (or system) theme before first paint to avoid a flash.
+      try {
+        var t = localStorage.getItem("theme");
+        if (t !== "light" && t !== "dark") {
+          t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

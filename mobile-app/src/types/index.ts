@@ -6,8 +6,12 @@ export type BedState = 'critical' | 'needs-water' | 'optimal';
 export interface Bed {
   id: number;
   name: string;
+  crop: string;
   vwc: number;
   state: BedState;
+  vwcTrigger: number;
+  vwcOptimalMin: number;
+  vwcOptimalMax: number;
   lastIrrigation: string;
   durationMin: number;
   waterUsedL: number;

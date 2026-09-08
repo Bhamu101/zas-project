@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle, LayersControl } from "react-leaflet";
-import { Satellite, MapPin, Ruler, Info } from "lucide-react";
+import { Satellite, Ruler } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -97,24 +97,6 @@ export default function AerialView() {
             pathOptions={{ color: "#15803d", fillColor: "#15803d", fillOpacity: 0.12, weight: 2 }}
           />
         </MapContainer>
-      </div>
-
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-3">
-        <Info size={18} className="text-brand shrink-0 mt-0.5" />
-        <div className="text-xs text-muted leading-relaxed">
-          <p>
-            <span className="font-semibold text-ink">Current source:</span> free high-resolution
-            satellite basemap tiles (no account or API key required), pinned to the farm&apos;s
-            coordinates above. Drag the boundary slider to preview different field radii.
-          </p>
-          <p className="mt-1">
-            <span className="font-semibold text-ink">Upgrade path:</span> this page can be wired
-            up to real Google Earth Engine layers (NDVI vegetation index, historical imagery,
-            change-over-time) once a Google Cloud project with the Earth Engine API enabled and a
-            service account key are available &mdash; that requires a small backend endpoint to
-            serve authenticated Earth Engine tiles to this map.
-          </p>
-        </div>
       </div>
     </div>
   );

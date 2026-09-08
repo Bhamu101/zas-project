@@ -12,7 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/Card';
@@ -20,6 +20,7 @@ import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { StatusBadge, type BadgeTone } from '@/components/ui/StatusBadge';
 import { Colors, FontFamily, FontSize, Radius, Spacing } from '@/constants/theme';
+import { notify } from '@/lib/alert';
 import { ApiError, api } from '@/services/api';
 import { useFarmStore } from '@/store/farmStore';
 import type { CropDiagnosis, CropHealthStatus } from '@/types';
@@ -54,7 +55,7 @@ export default function CropHealthScreen() {
         ? await ImagePicker.requestCameraPermissionsAsync()
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      notify(
         'Permission needed',
         source === 'camera'
           ? 'Camera access is needed to photograph a plant.'
@@ -128,9 +129,9 @@ export default function CropHealthScreen() {
             <Text style={styles.pickTitle}>Diagnose a plant</Text>
             <Text style={styles.pickBody}>
               Take a clear photo of a leaf or plant showing any spots, discoloration, or damage. The AI
-              will identify what's wrong and suggest a treatment.
+              will identify what&apos;s wrong and suggest a treatment.
             </Text>
-            <PrimaryButton title="Take Photo" onPress={() => pickFrom('camera')} icon={<Camera size={18} color={Colors.textOnPrimary} />} />
+            <PrimaryButton title="Take Photo" onPress={() => pickFrom('camera')} icon={<Camera size={18} color={Colors.primaryDark} />} />
             <View style={{ height: Spacing.sm }} />
             <PrimaryButton
               title="Choose from Gallery"
@@ -146,7 +147,7 @@ export default function CropHealthScreen() {
             <Image source={{ uri: picked.uri }} style={styles.preview} />
             {!diagnosis && (
               <>
-                <PrimaryButton title="Analyze Photo" onPress={analyze} loading={busy} icon={<Sparkles size={18} color={Colors.textOnPrimary} />} />
+                <PrimaryButton title="Analyze Photo" onPress={analyze} loading={busy} icon={<Sparkles size={18} color={Colors.primaryDark} />} />
                 <PrimaryButton title="Choose a Different Photo" variant="outline" onPress={reset} disabled={busy} />
               </>
             )}
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   preview: { width: '100%', aspectRatio: 1, borderRadius: Radius.lg, backgroundColor: Colors.background },
-  errorCard: { backgroundColor: Colors.criticalLight, borderColor: Colors.critical },
+  errorCard: { backgroundColor: Colors.criticalLight, paddingHorizontal: Spacing.md },
   errorText: { color: Colors.critical, fontSize: FontSize.body, fontFamily: FontFamily.medium },
   resultHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   resultIconWrap: { width: 44, height: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   conditionLabel: { fontSize: FontSize.caption, fontFamily: FontFamily.semibold, color: Colors.textSecondary },
   conditionValue: { fontSize: FontSize.heading, fontFamily: FontFamily.bold, color: Colors.text, marginTop: 2, marginBottom: Spacing.xs },
   bodyText: { fontSize: FontSize.body, color: Colors.textSecondary, lineHeight: 20 },
-  treatmentCard: { backgroundColor: Colors.primaryLight, borderColor: Colors.primary, gap: Spacing.xs },
+  treatmentCard: { backgroundColor: Colors.primaryLight, paddingHorizontal: Spacing.md, gap: Spacing.xs },
   treatmentTitle: { fontSize: FontSize.subtitle, fontFamily: FontFamily.bold, color: Colors.primaryDark },
   treatmentBody: { fontSize: FontSize.body, color: Colors.text, lineHeight: 20 },
 });

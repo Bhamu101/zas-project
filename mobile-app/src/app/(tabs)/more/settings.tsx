@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { ChevronRight, User, Wifi } from 'lucide-react-native';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/Card';
@@ -10,6 +10,7 @@ import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { TextField } from '@/components/ui/TextField';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
+import { confirmAction, notify } from '@/lib/alert';
 import { getApiBaseUrl, api, ApiError } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { useFarmStore } from '@/store/farmStore';
@@ -33,9 +34,9 @@ export default function SettingsScreen() {
     setTesting(true);
     try {
       await api.getDashboard();
-      Alert.alert('Connected', `Successfully reached the backend at:\n${getApiBaseUrl()}`);
+      notify('Connected', `Successfully reached the backend at:\n${getApiBaseUrl()}`);
     } catch (e) {
-      Alert.alert(
+      notify(
         'Could not connect',
         `${e instanceof ApiError ? e.message : 'Unknown error'}\n\nCheck the URL and that the backend is running and reachable from this device.`
       );
@@ -45,17 +46,19 @@ export default function SettingsScreen() {
   }
 
   function handleLogout() {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log out',
-        style: 'destructive',
-        onPress: () => {
-          logout();
-          router.replace('/');
-        },
+    confirmAction(
+      'Log out',
+      'Are you sure you want to log out?',
+      'Log out',
+      async () => {
+        // Await so the session is actually cleared from SecureStore before we
+        // navigate — otherwise the splash can read a stale session and bounce
+        // straight back into the tabs.
+        await logout();
+        router.replace('/');
       },
-    ]);
+      { destructive: true }
+    );
   }
 
   return (
@@ -65,7 +68,7 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Card style={styles.profileCard}>
           <View style={styles.avatar}>
-            <User size={22} color={Colors.primary} />
+            <User size={22} color={Colors.primaryDark} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>{user?.name ?? 'Farmer'}</Text>
@@ -103,8 +106,8 @@ export default function SettingsScreen() {
           </View>
           <Card style={{ gap: Spacing.md }}>
             <Text style={styles.mutedText}>
-              Point this app at your backend's URL — a LAN IP, an ngrok/tunnel URL, or a deployed host. Useful
-              when testing on a phone away from the backend's network.
+              Point this app at your backend&apos;s URL — a LAN IP, an ngrok/tunnel URL, or a deployed host. Useful
+              when testing on a phone away from the backend&apos;s network.
             </Text>
             <TextField
               label="Backend Server URL"
@@ -121,12 +124,12 @@ export default function SettingsScreen() {
         </View>
 
         <Section title="Support">
-          <Row label="Help & Support" onPress={() => Alert.alert('Help & Support', 'Contact your system administrator for assistance.')} />
+          <Row label="Help & Support" onPress={() => notify('Help & Support', 'Contact your system administrator for assistance.')} />
           <Row
             label="About"
             value="v1.0.0"
             last
-            onPress={() => Alert.alert('Agri-Intelligence', 'Smarter decisions for a stronger harvest.')}
+            onPress={() => notify('Agri-Intelligence', 'Smarter decisions for a stronger harvest.')}
           />
         </Section>
 

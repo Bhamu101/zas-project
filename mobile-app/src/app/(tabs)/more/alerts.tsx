@@ -8,6 +8,7 @@ import { ScreenBackground } from '@/components/ui/ScreenBackground';
 import { EmptyState, LoadingState } from '@/components/ui/States';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { Colors, FontSize, FontWeight, Radius, Spacing } from '@/constants/theme';
+import { useAlertsSeenStore } from '@/store/alertsSeenStore';
 import { useDashboardStore } from '@/store/dashboardStore';
 import type { AlertItem } from '@/types';
 
@@ -20,12 +21,13 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 const LEVEL_META: Record<AlertItem['level'], { icon: typeof TriangleAlert; tone: string; bg: string }> = {
   critical: { icon: TriangleAlert, tone: Colors.critical, bg: Colors.criticalLight },
-  success: { icon: CheckCircle2, tone: Colors.primary, bg: Colors.successLight },
+  success: { icon: CheckCircle2, tone: Colors.success, bg: Colors.successLight },
   info: { icon: Info, tone: Colors.info, bg: Colors.infoLight },
 };
 
 export default function AlertsScreen() {
   const { data, fetchNow } = useDashboardStore();
+  const markSeen = useAlertsSeenStore((s) => s.markSeen);
   const [filter, setFilter] = useState<Filter>('all');
   const [readIds, setReadIds] = useState<Set<number>>(new Set());
 
@@ -33,7 +35,11 @@ export default function AlertsScreen() {
     if (!data) fetchNow();
   }, [data, fetchNow]);
 
-  if (!data) return <LoadingState />;
+  useEffect(() => {
+    if (data) markSeen(data.alerts.map((a) => a.id));
+  }, [data, markSeen]);
+
+  if (!data) return <LoadingState variant="alerts" />;
 
   const alerts = data.alerts.filter((a) => {
     if (filter === 'all') return true;
@@ -98,8 +104,8 @@ const styles = StyleSheet.create({
   },
   filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   filterLabel: { fontSize: FontSize.body, fontWeight: FontWeight.semibold, color: Colors.textSecondary },
-  filterLabelActive: { color: Colors.textOnPrimary },
-  list: { padding: Spacing.xl, paddingTop: 0, gap: Spacing.sm },
+  filterLabelActive: { color: Colors.primaryDark },
+  list: { padding: Spacing.xl, paddingTop: 0, paddingBottom: Spacing.huge, gap: Spacing.sm },
   alertCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   alertCardRead: { opacity: 0.55 },
   iconWrap: { width: 36, height: 36, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
