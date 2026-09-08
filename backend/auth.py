@@ -26,6 +26,14 @@ from jwt.exceptions import PyJWKClientError
 _AUDIENCE = "authenticated"
 _ALGORITHMS = ["ES256", "RS256"]
 
+# Falls back to the project this app ships against when SUPABASE_URL isn't set.
+# Safe to hardcode: a project URL is public by design — the same value ships
+# inside the mobile app and is declared in render.yaml. It is NOT a credential;
+# tokens are still verified against that project's public JWKS, and nothing here
+# can mint one. The env var always wins, so pointing a deployment at a different
+# project needs no code change.
+DEFAULT_SUPABASE_URL = "https://ewseaaucyujohlepufpo.supabase.co"
+
 _jwk_client: PyJWKClient | None = None
 
 
@@ -38,15 +46,7 @@ def _supabase_url() -> str:
     without editing code.
     """
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    if not url:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "SUPABASE_URL is not set on the server. Copy backend/.env.example "
-                "to backend/.env and set it to your Supabase project URL."
-            ),
-        )
-    return url
+    return url or DEFAULT_SUPABASE_URL
 
 
 def _issuer() -> str:
