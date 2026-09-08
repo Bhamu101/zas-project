@@ -9,69 +9,195 @@
 }
 
 @theme {
-  --font-display: Tahoma, Geneva, Verdana, sans-serif;
+  /* ---- Typography -------------------------------------------------------
+     IBM Plex Sans for interface text, IBM Plex Mono for figures. Replaces
+     Tahoma, which was the single biggest thing making this read as a
+     prototype. Mono is for NUMBERS ONLY (tabular figures keep polling values
+     from shifting the layout) — never for prose. */
+  --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --font-wordmark: "Fraunces", Georgia, serif;
 
-  /* Palette: #0F0F0F ink · #C7FF2E lime accent · #2E2E2E graphite
-     #FFFFFF surface · #808080 steel. Lime is used for fills + section
-     borders in both themes; accent text uses a deepened lime on light,
-     a brightened lime on dark. Semantic tokens below are re-pointed for
-     dark mode under :root[data-theme="dark"]. */
+  /* ---- Type scale -------------------------------------------------------
+     Fixed steps rather than ad-hoc sizes. Body stays 16px: below that mobile
+     Safari zooms on focus. */
+  --text-2xs: 0.6875rem; /* 11px — dense table meta, never body */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+
+  /* ---- Brand ------------------------------------------------------------
+     Lime is an ACCENT: active nav, primary buttons, focus rings, chart
+     series. It is deliberately not a page-scale background any more — when
+     everything is lime, nothing reads as important. `brand-ink` is the only
+     safe text/icon colour on a lime fill; `brand-text` is the accessible
+     stand-in for lime as text on light surfaces (raw lime fails contrast). */
   --color-brand: #c7ff2e;
+  --color-brand-strong: #a3e635;
+  --color-brand-ink: #0f0f0f;
+  --color-brand-text: #4d7c0f;
+  --color-brand-subtle: #f2ffd6;
+
+  /* DEPRECATED aliases. The pages not yet redesigned still use bg-brand-dark /
+     bg-card / bg-lime; dropping these would silently emit no colour at all
+     rather than failing loudly. Remove each one as its last call site migrates.
+     `card` is re-pointed to the neutral subtle surface so those pages also pick
+     up correct dark-mode behaviour in the meantime. */
   --color-brand-dark: #a3e635;
   --color-lime: #c7ff2e;
+  --color-card: #f1f5f9;
   --color-graphite: #2e2e2e;
   --color-steel: #808080;
 
-  --color-ink: #0f0f0f;
-  --color-muted: #6b7280;
+  /* ---- Neutral surfaces (Data-Dense Dashboard: neutral base, data colour) */
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;
-  --color-card: #eef2e6;
+  --color-surface-2: #fafafa;
+  --color-ink: #0f172a;
+  --color-ink-2: #334155;
+  --color-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* ---- Semantic status --------------------------------------------------
+     Independent of the brand on purpose, so "critical" never competes with
+     "this is our colour". All meet 4.5:1 on white as text. */
+  --color-ok: #15803d;
+  --color-ok-bg: #dcfce7;
+  --color-warn: #b45309;
+  --color-warn-bg: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fee2e2;
+  --color-info: #1d4ed8;
+  --color-info-bg: #dbeafe;
+  /* "Unknown", not "bad" — an offline sensor is a different state to a fault. */
+  --color-neutral: #64748b;
+  --color-neutral-bg: #f1f5f9;
+
+  /* ---- Data series (colourblind-safe ordering, not red/green adjacent) --- */
+  --color-data-1: #2563eb;
+  --color-data-2: #0d9488;
+  --color-data-3: #d97706;
+  --color-data-4: #7c3aed;
+  --color-data-5: #db2777;
+
+  /* ---- Spacing / radius / elevation ------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-pop: 0 8px 24px rgba(15, 23, 42, 0.12);
+
+  /* Layout constants used by the shell. */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 64px;
 }
 
-/* ---- Dark theme ---------------------------------------------------------- */
+/* ---- Dark theme ---------------------------------------------------------
+   Re-points the same tokens rather than inverting colours. Surfaces lift as
+   they get closer to the user; status colours are lightened so they still
+   clear 4.5:1 on a dark ground instead of reusing the light-mode values. */
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --color-ink: #f4f4f5;
-  --color-muted: #a1a1aa;
-  --color-bg: #0f0f0f;
-  --color-surface: #1a1a1a;
-  --color-card: #242424;
+  --color-bg: #0b1120;
+  --color-surface: #131c2e;
+  --color-surface-2: #1a2438;
+  --color-ink: #f1f5f9;
+  --color-ink-2: #cbd5e1;
+  --color-muted: #94a3b8;
+  --color-border: #24304a;
+  --color-border-strong: #33415c;
+
+  --color-brand-text: #bef264;
+  --color-brand-subtle: #1f2c12;
+  --color-card: #1a2438;
+
+  --color-ok: #4ade80;
+  --color-ok-bg: rgba(34, 197, 94, 0.16);
+  --color-warn: #fbbf24;
+  --color-warn-bg: rgba(245, 158, 11, 0.16);
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(239, 68, 68, 0.16);
+  --color-info: #60a5fa;
+  --color-info-bg: rgba(59, 130, 246, 0.16);
+  --color-neutral: #94a3b8;
+  --color-neutral-bg: rgba(148, 163, 184, 0.14);
+
+  --color-data-1: #60a5fa;
+  --color-data-2: #2dd4bf;
+  --color-data-3: #fbbf24;
+  --color-data-4: #a78bfa;
+  --color-data-5: #f472b6;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 body {
   background-color: var(--color-bg);
   font-family: var(--font-display);
   color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Figures line up in columns and don't reflow as digits change. */
+.tabular-nums,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keyboard focus must stay visible everywhere — never remove without
+   replacing. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-strong);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Honour the OS "reduce motion" setting rather than animating regardless. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---- Lime accent tuning (unlayered → wins over Tailwind utilities) ------ */
 
 /* Dark text/icons on any solid lime fill (buttons, chips, active pills). */
 .bg-brand {
-  color: #0f0f0f;
+  color: var(--color-brand-ink);
 }
 
-/* Accent text/links: a deepened lime on white, brightened for dark. */
+/* Raw lime fails contrast as text on white, so these utilities resolve to the
+   deepened variant instead. */
 .text-brand,
 .text-brand-dark {
-  color: #4d7c0f;
-}
-:root[data-theme="dark"] .text-brand,
-:root[data-theme="dark"] .text-brand-dark {
-  color: #b6f21f;
+  color: var(--color-brand-text);
 }
 
-/* Every section / card gets the lime border. */
-.bg-surface {
-  border-color: var(--color-lime);
-}
+/* ---- Dark-mode remaps for hard-coded utility classes -------------------
+   TRANSITIONAL — delete as pages migrate to the tokens above.
 
-/* ---- Dark-mode remaps for hard-coded utility classes ------------------- */
-/* The app predates dark mode and uses literal grays/tints in ~30 files;
-   remapping the classes here is safer than sweeping every call site. */
+   The pages not yet redesigned still write literal `bg-white`, `text-gray-600`
+   etc., which have no dark variant of their own. These remaps keep dark mode
+   working on those pages. Every page moved onto the semantic tokens
+   (--color-surface, --color-ink, --color-border, …) stops depending on this
+   block; once no page does, the whole section goes.
+
+   Do NOT add to this list. New work uses the tokens. */
 [data-theme="dark"] .bg-white {
   background-color: var(--color-surface);
 }

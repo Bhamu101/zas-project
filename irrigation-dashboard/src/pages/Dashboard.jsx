@@ -1,172 +1,93 @@
-import { useEffect, useRef, useState } from "react";
-import "./Dashboard.css";
+import BedMoisture from "../components/dashboard/BedMoisture";
+import EnergyPanel from "../components/dashboard/EnergyPanel";
+import FarmerAdvisory from "../components/dashboard/FarmerAdvisory";
+import RecentAlerts from "../components/dashboard/RecentAlerts";
+import Sparkline from "../components/dashboard/Sparkline";
+import StatCard from "../components/dashboard/StatCard";
+import SystemStatusStrip from "../components/dashboard/SystemStatusStrip";
+import WaterUseChart from "../components/dashboard/WaterUseChart";
 
-// Cinematic scroll-hero for the dashboard landing view. Adapted from a
-// vanilla-JS scroll-choreography spec (originally a Bosnia/Mostar tourism
-// page) — kept only the mechanism (sticky stage, scroll-linked title
-// shrink/fade), dropped everything content-specific to that page (its
-// photography, fonts, and multi-panel story structure all belonged to
-// someone else's project). Scene is a slow crossfade between three
-// user-supplied farm photos (public/images/hero-*.jpg) — they're three
-// distinct, unrelated shots rather than layers of one continuous scene, so
-// a crossfade slideshow fits better here than the original's sky/mid/fore
-// parallax layering.
+// The operational home page.
 //
-// Note this app's actual scrolling element is <main> (see App.jsx —
-// `overflow-y-auto`), not the window, so scroll tracking attaches there.
+// This replaces a full-screen photo slideshow that ignored its `data` prop
+// entirely — the landing page of an irrigation platform showed nothing about
+// the farm. The pieces used here (StatCard, Sparkline, RecentAlerts,
+// FarmerAdvisory) already existed in the codebase but were never imported
+// anywhere; this wires them up rather than reinventing them.
+//
+// Reading order is deliberate: is anything wrong -> today's headline numbers ->
+// water use -> beds -> power -> advice and alerts.
 
-const HERO_IMAGES = [
-  "/images/hero-harvest.jpg",
-  "/images/hero-sunset.jpg",
-  "/images/hero-pivot.jpg",
-  "/images/hero-solartracker.jpg",
-];
-const SLIDESHOW_INTERVAL_MS = 6500;
-
-// Cycled alongside the hero photos (by index, wrapping) so the headline
-// crossfades in sync with the slideshow instead of sitting static.
-const CINEMA_TITLES = [
-  { line1: "Welcome to", line2: "Agri-Intelligence" },
-  { line1: "Welcome to", line2: "Isivuno Esihlakaniphileyo" },
-  { line1: "Welcome to", line2: "Goho Rakangwara" },
-];
-
-function clamp(v, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, v));
-}
-
-function smoothstep(edge0, edge1, value) {
-  const x = clamp((value - edge0) / (edge1 - edge0));
-  return x * x * (3 - 2 * x);
-}
-
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-export default function Dashboard() {
-  const heroRef = useRef(null);
-  const worldRef = useRef(null);
-  const [activeImage, setActiveImage] = useState(0);
-
-  useEffect(() => {
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduceMotion.matches) return; // hold on the first image, no auto-cycling
-    const id = setInterval(() => {
-      setActiveImage((i) => (i + 1) % HERO_IMAGES.length);
-    }, SLIDESHOW_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const hero = heroRef.current;
-    const world = worldRef.current;
-    if (!hero || !world) return;
-
-    const scrollContainer = hero.closest("main") || window;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    let smoothScroll = 0;
-    let targetScroll = 0;
-    let initialized = false;
-    let rafId = null;
-
-    function viewportHeight() {
-      return scrollContainer === window ? window.innerHeight : scrollContainer.clientHeight;
-    }
-
-    function getScrollDistance() {
-      const rect = hero.getBoundingClientRect();
-      return clamp(-rect.top, 0, hero.offsetHeight - viewportHeight());
-    }
-
-    function update() {
-      rafId = null;
-      targetScroll = getScrollDistance();
-
-      if (!initialized || reduceMotion.matches) {
-        smoothScroll = targetScroll;
-        initialized = true;
-      } else {
-        smoothScroll = lerp(smoothScroll, targetScroll, 0.14);
-      }
-      if (Math.abs(smoothScroll - targetScroll) < 0.08) smoothScroll = targetScroll;
-
-      const introExit = smoothstep(60, 620, smoothScroll);
-
-      world.style.setProperty("--kicker-y", `${introExit * -40}px`);
-      world.style.setProperty("--kicker-opacity", 1 - introExit * 1.4);
-      world.style.setProperty("--title-y", `${introExit * -140}px`);
-      world.style.setProperty("--title-scale", 1 - introExit * 0.08);
-      world.style.setProperty("--title-opacity", 1 - introExit);
-      world.style.setProperty("--tagline-y", `${introExit * -100}px`);
-      world.style.setProperty("--tagline-opacity", 1 - introExit * 1.2);
-      world.style.setProperty("--shade-alpha", 0.12 + introExit * 0.28);
-
-      if (Math.abs(smoothScroll - targetScroll) > 0.08) requestTick();
-    }
-
-    function requestTick() {
-      if (rafId != null) return;
-      rafId = requestAnimationFrame(update);
-    }
-
-    scrollContainer.addEventListener("scroll", requestTick, { passive: true });
-    window.addEventListener("resize", requestTick);
-    update();
-
-    return () => {
-      scrollContainer.removeEventListener("scroll", requestTick);
-      window.removeEventListener("resize", requestTick);
-      if (rafId != null) cancelAnimationFrame(rafId);
-    };
-  }, []);
-
-  const activeTitle = CINEMA_TITLES[activeImage % CINEMA_TITLES.length];
+export default function Dashboard({ data, onNavigate }) {
+  const { kpis, extendedStats, irrigationOverview, energyOverview, sparkline, beds, alerts } = data;
 
   return (
-    <section
-      ref={heroRef}
-      className="cinema-hero"
-      aria-label={`${activeTitle.line1} ${activeTitle.line2}`}
-    >
-      <div className="cinema-stage">
-        <div ref={worldRef} className="cinema-world">
-          <div className="cinema-scene" aria-hidden="true" />
+    <div className="mx-auto flex max-w-[1600px] flex-col gap-4">
+      <SystemStatusStrip
+        systemStatus={data.systemStatus}
+        kpis={kpis}
+        systemInfo={data.systemInfo}
+        alerts={alerts}
+        onNavigate={onNavigate}
+      />
 
-          <div className="cinema-scene-photos" aria-hidden="true">
-            {HERO_IMAGES.map((src, i) => (
-              <img
-                key={src}
-                src={src}
-                alt=""
-                className="cinema-scene-photo"
-                style={{ opacity: i === activeImage ? 1 : 0 }}
-              />
-            ))}
-          </div>
+      {/* Headline numbers. Each carries its own 8-point trend so a value is
+          readable as rising or falling without opening another page. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Water used today"
+          value={`${(kpis?.waterUsedTodayL ?? 0).toLocaleString()} L`}
+          sublabel={`${kpis?.waterTargetPct ?? 0}% of daily target`}
+        >
+          <Sparkline data={sparkline?.water ?? []} color="#3b82f6" />
+        </StatCard>
 
-          <div className="cinema-scene-overlay" aria-hidden="true" />
-          <div className="cinema-shade" aria-hidden="true" />
+        <StatCard
+          label="Water saved"
+          value={`${(extendedStats?.totalWaterSavedL ?? 0).toLocaleString()} L`}
+          sublabel={extendedStats?.totalWaterSavedPeriod ?? ""}
+          valueColor="text-green-700"
+        >
+          <Sparkline data={sparkline?.irrigation ?? []} color="#16a34a" />
+        </StatCard>
 
-          <div className="cinema-copy">
-            <div className="cinema-title-stack">
-              {CINEMA_TITLES.map((title, i) => (
-                <h1
-                  key={title.line2}
-                  className="cinema-title"
-                  style={{ "--layer-opacity": i === activeImage % CINEMA_TITLES.length ? 1 : 0 }}
-                >
-                  {title.line1}
-                  <br />
-                  {title.line2}
-                </h1>
-              ))}
-            </div>
-            <p className="cinema-tagline">Powering Growth — Where Agriculture, Technology and Commerce Converge</p>
-          </div>
-        </div>
+        <StatCard
+          label="Avg soil moisture"
+          value={`${kpis?.soilMoistureAvg ?? 0}%`}
+          sublabel={`Optimal ${data.systemInfo?.vwcOptimalMin ?? 0}–${data.systemInfo?.vwcOptimalMax ?? 0}%`}
+        >
+          <Sparkline data={sparkline?.moisture ?? []} color="#f59e0b" />
+        </StatCard>
+
+        <StatCard
+          label="Crop health"
+          value={`${extendedStats?.cropHealthScorePct ?? 0}%`}
+          sublabel={extendedStats?.cropHealthLabel ?? ""}
+          valueColor="text-green-700"
+        >
+          <Sparkline data={sparkline?.energy ?? []} color="#16a34a" />
+        </StatCard>
       </div>
-    </section>
+
+      <WaterUseChart
+        series={irrigationOverview?.waterUseSeries}
+        totalL={irrigationOverview?.todayWaterUseL}
+        deltaPct={irrigationOverview?.todayWaterUseDeltaPct}
+      />
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <BedMoisture beds={beds} onNavigate={onNavigate} />
+        <EnergyPanel
+          energyOverview={energyOverview}
+          generatedKwhToday={extendedStats?.energyGeneratedKwhToday}
+          onNavigate={onNavigate}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <FarmerAdvisory advisory={data.farmerAdvisory} />
+        <RecentAlerts alerts={alerts ?? []} onNavigate={onNavigate} />
+      </div>
+    </div>
   );
 }

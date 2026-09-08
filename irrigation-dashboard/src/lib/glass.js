@@ -1,7 +1,15 @@
-// Kept the export name for compatibility; the app no longer uses a glass look —
-// this is now a plain light card on the flat page background.
+// Shared surface classes.
+//
+// The name is historical — there is no glass effect any more. These are kept as
+// the single definition of a card/dropdown surface because they're referenced
+// across every page; pointing them at the design tokens migrates the whole app
+// to the new system (and to token-driven dark mode) in one place.
+//
+// New components should prefer <Card> from components/ui/Card.jsx. These
+// constants remain for the pages that haven't been rebuilt yet.
+
 export const GLASS_CARD =
-  "bg-white border border-gray-200 shadow-sm rounded-2xl";
+  "bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] rounded-[var(--radius-lg)]";
 
 export const SOLID_DROPDOWN =
-  "bg-white border border-gray-200 shadow-xl rounded-2xl";
+  "bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[var(--shadow-pop)] rounded-[var(--radius-lg)]";

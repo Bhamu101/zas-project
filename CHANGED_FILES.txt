@@ -1818,3 +1818,130 @@ VERIFIED
 NOT DONE (user asked to hold): the UI redesign / design system / dashboard
 rebuild from the audit. Dashboard.jsx is still the photo-slideshow hero that
 ignores its `data` prop, and 10 dashboard components remain orphaned.
+
+## 2026-09-08 — irrigation-dashboard: real operational home page
+
+Replaced the landing page. It was a full-screen photo slideshow that was handed
+`data` by App.jsx and took no props at all — the home page of an irrigation
+platform showed nothing about the farm.
+
+Approach: wire up what already existed. StatCard, Sparkline, RecentAlerts,
+FarmerAdvisory, TankGauge and BatteryGauge were all written and imported by
+nothing; this uses them rather than reinventing them.
+
+NEW components (src/components/dashboard/):
+- StatusPill.jsx — one status indicator for the whole app; each page previously
+  invented its own coloured pill. Tones are semantic and deliberately never the
+  lime brand colour. Has a distinct `offline` tone (unknown != bad).
+- SystemStatusStrip.jsx — top strip: worst-of status (a critical alert or an
+  offline device outranks a nominal "OPTIMAL"), mode, irrigation state, next
+  cycle, alert count, last-updated/firmware line.
+- WaterUseChart.jsx — today vs yesterday area chart; the useful question is
+  "is this normal for this hour", not the raw total.
+- WaterSystemPanel.jsx — tank gauge, live pressure/flow, per-bed pump+valve.
+- BedMoisture.jsx — per-bed VWC drawn against each crop's own optimal band and
+  trigger point, not one global scale.
+- EnergyPanel.jsx — active source, battery (badge only when it needs action),
+  generated vs used, power-draw chart.
+- SensorHealth.jsx — the offline case is the point: a dead sensor shows
+  "OFFLINE" with its stale value struck through, instead of printing a number
+  that reads as live.
+
+CHANGED:
+- src/pages/Dashboard.jsx — rewritten as the operational overview. Pulls
+  useSystemSettings for device health, since /api/dashboard doesn't carry it.
+- src/App.jsx — TopBar now renders on the dashboard too (it was hidden for the
+  old full-bleed hero, which also left small screens with no sidebar toggle);
+  main padding p-4 -> p-4 sm:p-5; Dashboard gets onNavigate.
+- src/components/layout/TopBar.jsx — FIXED: the Sign Out button had no onClick
+  at all, so the only way out of the app did nothing. Now calls signOut().
+  "System Diagnostics" also did nothing; routed to settings. Profile name/role
+  and the dashboard greeting now come from the session instead of a hardcoded
+  "Farm Admin" / "Bhamu".
+- src/components/dashboard/RecentAlerts.jsx — "View All" now navigates (was a
+  dead button); added an empty state; shows 4 instead of 3.
+
+HONEST LIMITS
+- Pressure and flow are shown as current readings only. The API carries no
+  history for them, so no trend line was drawn rather than faking one. Adding
+  it needs the backend to start recording.
+- src/pages/Dashboard.css and public/images/hero-*.jpg are now unreferenced.
+  Left in place deliberately — deleting the cinematic hero work is the user's
+  call, not a side effect of this change.
+- Verified: eslint clean, build succeeds (2202 modules), all 11 new/changed
+  modules compile through Vite. NOT verified in a browser — no visual check was
+  possible from here.
+
+## 2026-09-08 — dashboard: drop two sections, remove icons
+
+- Removed the "Sensor & Device Health" and "Water System" sections. Deleted
+  src/components/dashboard/SensorHealth.jsx and WaterSystemPanel.jsx rather than
+  leaving them orphaned (orphaned components were a finding in the audit).
+- Dashboard.jsx no longer needs useSystemSettings (it was only there to fetch
+  device health from /api/settings), so the page is back to a single data
+  source. WaterUseChart is now full width; FarmerAdvisory pairs with
+  RecentAlerts.
+- SystemStatusStrip lost its offlineDeviceCount input along with the device
+  data; its status is now worst-of {critical alerts, system status}.
+- Icons removed from every dashboard component: StatCard (icon prop is now
+  optional, guarded), SystemStatusStrip, WaterUseChart, BedMoisture,
+  EnergyPanel, FarmerAdvisory, RecentAlerts. Alert severity still reads from
+  the badge label + colour, so no information was lost with the icons.
+- TankGauge is now unused again (it was only used by WaterSystemPanel). Left in
+  place, not deleted.
+- Verified: eslint clean, build succeeds, all 8 dashboard modules compile.
+  Still not verified in a browser from here.
+
+## 2026-09-08 — Design system foundation (via /ui-ux-pro-max skill)
+
+Ran the skill's --design-system generator. Followed its "Data-Dense Dashboard"
+style (12-col grid, KPI cards, neutral surfaces + data colour, Recharts 9/10)
+and its mono-for-figures typography principle. Did NOT follow its default
+palette output (dark slate #0F172A + green #22C55E, "Organic Biophilic"), which
+would have discarded the lime brand and applied a wellness-brand style to an
+operations console. User chose "keep lime, demote it" + "foundation first".
+
+- index.html — IBM Plex Sans + IBM Plex Mono via <link> (not CSS @import, which
+  blocks the stylesheet), display=swap.
+- src/index.css — rewritten @theme:
+  * Typography: Tahoma -> IBM Plex Sans; IBM Plex Mono reserved for figures.
+  * Type scale, radius scale, 2-step elevation, layout constants.
+  * Semantic tokens: surface/ink/muted/border + ok/warn/danger/info/neutral,
+    all independent of the brand so status never competes with identity.
+    Data series colours chosen to avoid adjacent red/green.
+  * Dark mode is now token RE-POINTING, incl. lightened status colours that
+    still clear 4.5:1 on dark, rather than inverted light-mode values.
+  * Global :focus-visible ring and a prefers-reduced-motion block.
+  * KEPT the legacy [data-theme=dark] utility remaps, marked TRANSITIONAL —
+    the 9 un-redesigned pages still depend on them.
+- NEW src/components/ui/: Card (+CardHeader/CardBody), Button (44px min height,
+  real disabled, aria-busy spinner), StatusPill, States (Skeleton/StatSkeleton/
+  PanelSkeleton/EmptyState/ErrorState).
+- src/lib/glass.js — GLASS_CARD/SOLID_DROPDOWN re-pointed at the tokens. This is
+  the high-leverage edit: every panel on all 10 pages picks up the new surface
+  and correct dark mode from one change.
+- Sidebar.jsx — rewritten. Lime gradient removed; lime now marks only the ACTIVE
+  item. 10 flat items grouped into Overview/Operations/Monitoring/Insights/
+  System. Supports a mobile drawer mode. aria-current on the active item.
+- App.jsx — shell rebuilt: desktop sidebar hidden below lg, mobile overlay
+  drawer with backdrop + Escape to close, skeleton loading screen replacing the
+  one-line "Loading...", ErrorState with retry.
+- TopBar.jsx — 64px token-styled header, separate drawer/collapse buttons,
+  aria-labels on icon-only buttons, notification count announced.
+- Dashboard components migrated onto semantic tokens; SystemStatusStrip is now a
+  neutral surface with a single lime rule instead of a full lime gradient;
+  RecentAlerts uses the shared StatusPill; duplicate dashboard/StatusPill.jsx
+  deleted in favour of ui/StatusPill.jsx.
+
+CAUGHT DURING THIS WORK: removing --color-card / --color-brand-dark / --color-lime
+from @theme silently emitted NO colour for bg-card / bg-brand-dark on 6
+un-migrated pages (Tailwind just stops generating the class). Re-added as
+documented deprecated aliases to be deleted per page as they migrate.
+
+Verified: eslint clean, build succeeds, all 14 shell/dashboard modules and all 9
+remaining pages compile through Vite. Not verified in a browser from here.
+NEXT: the 9 remaining pages, pending user review of this foundation.
+
+- Sidebar.jsx — regrouped: new "AI Assistant" group holds Goho AI + Crop Health
+  (both Gemini-backed). Crop Health moved out of Monitoring, which now holds the
+  sensor-driven screens only (Bed Monitoring, Aerial View). Overview is Dashboard.

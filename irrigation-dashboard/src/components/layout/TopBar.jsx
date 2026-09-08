@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { SOLID_DROPDOWN } from "../../lib/glass";
 import { useLiveWeather } from "../../hooks/useLiveWeather";
+import { CURRENT_USER, signOut } from "../../lib/currentUser";
 import ThemeToggle from "./ThemeToggle";
 
 const alertStyles = {
@@ -24,7 +25,8 @@ const weatherIconMap = {
 };
 
 const PAGE_META = {
-  dashboard: { title: "Welcome back, Bhamu \u{1F44B}", subtitle: "Here is what has been happening on your farm today." },
+  // Name comes from the signed-in session rather than being hardcoded.
+  dashboard: { subtitle: "Here is what has been happening on your farm today." },
   "ai-assistant": { title: "Goho AI" },
   irrigation: { title: "Irrigation Control" },
   energy: { title: "Energy Management" },
@@ -66,7 +68,7 @@ function WeatherChip() {
   );
 }
 
-export default function TopBar({ activePage = "dashboard", alerts = [], onNavigate, onToggleSidebar }) {
+export default function TopBar({ activePage = "dashboard", alerts = [], onNavigate, onToggleSidebar, onOpenDrawer }) {
   const [now, setNow] = useState(new Date());
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -85,31 +87,45 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
   const timeStr = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: true });
 
   const pageMeta = PAGE_META[activePage] || PAGE_META.dashboard;
+  const pageTitle =
+    activePage === "dashboard"
+      ? `Welcome back, ${CURRENT_USER.name} \u{1F44B}`
+      : pageMeta.title;
 
   const sortedAlerts = [...alerts].sort(
     (a, b) => (alertStyles[a.level]?.priority ?? 9) - (alertStyles[b.level]?.priority ?? 9)
   );
 
   return (
-    <header className="h-[100px] shrink-0 bg-white border-b border-gray-200 px-4 flex items-center justify-between gap-6 relative z-20">
-      <div className="flex items-center gap-3 shrink-0">
+    <header className="relative z-20 flex h-[var(--topbar-h)] shrink-0 items-center justify-between gap-4 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-3">
         <button
-          onClick={onToggleSidebar}
-          className="w-12 h-12 rounded-xl bg-brand flex items-center justify-center shrink-0 hover:opacity-90 active:opacity-80 transition-opacity"
+          type="button"
+          aria-label="Open navigation"
+          onClick={onOpenDrawer}
+          className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-md)] text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-neutral-bg)] lg:hidden"
         >
-          <Menu size={20} />
+          <Menu size={20} aria-hidden="true" />
         </button>
-      </div>
+        <button
+          type="button"
+          aria-label="Collapse navigation"
+          onClick={onToggleSidebar}
+          className="hidden h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[var(--radius-md)] text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-neutral-bg)] lg:flex"
+        >
+          <Menu size={20} aria-hidden="true" />
+        </button>
 
-      <div className="flex-1 flex flex-col items-start justify-center min-w-0">
-        <p className="font-semibold text-2xl leading-none tracking-tight text-ink truncate">
-          {pageMeta.title}
-        </p>
-        {pageMeta.subtitle && (
-          <p className="text-xs text-muted mt-1 truncate">
-            {pageMeta.subtitle}
-          </p>
-        )}
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold leading-tight text-[var(--color-ink)] sm:text-lg">
+            {pageTitle}
+          </h1>
+          {pageMeta.subtitle && (
+            <p className="hidden truncate text-xs text-[var(--color-muted)] sm:block">
+              {pageMeta.subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
@@ -117,7 +133,7 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
 
         <ThemeToggle />
 
-        <div className="text-right leading-tight text-xs text-muted hidden md:block">
+        <div className="hidden text-right text-xs leading-tight text-[var(--color-muted)] xl:block">
           <p>{dateStr}</p>
           <p>{timeStr}</p>
         </div>
@@ -125,9 +141,10 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => { setNotifOpen((v) => !v); setProfileOpen(false); }}
-            className="relative w-12 h-12 flex items-center justify-center rounded-xl text-ink hover:bg-black/5 active:bg-black/10 transition-colors"
+            aria-label={`Notifications${alerts.length ? `, ${alerts.length} unread` : ""}`}
+            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-[var(--radius-md)] text-[var(--color-ink-2)] transition-colors hover:bg-[var(--color-neutral-bg)]"
           >
-            <Bell size={20} />
+            <Bell size={20} aria-hidden="true" />
             {alerts.length > 0 && (
               <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center text-white">
                 {alerts.length}
@@ -170,8 +187,8 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
           >
             <UserCircle size={24} className="text-gray-300" strokeWidth={1.5} />
             <div className="text-left leading-tight hidden sm:block">
-              <p className="text-xs text-ink font-bold">Farm Admin</p>
-              <p className="text-[11px] text-muted">Administrator</p>
+              <p className="text-xs text-ink font-bold">{CURRENT_USER.name}</p>
+              <p className="text-[11px] text-muted capitalize">{CURRENT_USER.role}</p>
             </div>
             <ChevronDown size={13} className={`text-muted transition-transform ${profileOpen ? "rotate-180" : ""}`} />
           </button>
@@ -185,12 +202,21 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
                 <Settings size={16} className="text-muted" />
                 System Settings
               </button>
-              <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => { onNavigate?.("settings"); setProfileOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-gray-50 transition-colors"
+              >
                 <ShieldCheck size={16} className="text-muted" />
                 System Diagnostics
               </button>
               <div className="h-px bg-gray-100 my-1" />
-              <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
+              {/* Previously had no onClick at all — the only way out of the app
+                  did nothing. LoginGate returns to the sign-in screen once the
+                  session clears. */}
+              <button
+                onClick={() => { setProfileOpen(false); signOut(); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"
+              >
                 <LogOut size={16} />
                 Sign Out
               </button>
