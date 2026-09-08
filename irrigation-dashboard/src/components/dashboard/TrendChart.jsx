@@ -20,13 +20,13 @@ export default function TrendChart({ icon: Icon, title, unit, labels, data, colo
   const lastValue = data[data.length - 1];
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
       <div className="flex items-center justify-between mb-2 shrink-0">
         <div className="flex items-center gap-2">
           <Icon size={16} className="shrink-0" style={{ color }} />
-          <h3 className="text-xs font-bold text-ink">{title}</h3>
+          <h3 className="text-xs font-bold text-[var(--color-ink)]">{title}</h3>
         </div>
-        <span className="text-[11px] text-muted">{unit}</span>
+        <span className="text-[11px] text-[var(--color-muted)]">{unit}</span>
       </div>
       <div className="relative flex-1 min-h-[160px]">
         <div className="absolute inset-0">

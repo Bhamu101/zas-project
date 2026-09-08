@@ -69,12 +69,12 @@ function validate(s) {
 // --- small presentational helpers -----------------------------------------
 function StatusItem({ label, value, tone = "muted" }) {
   const toneText = {
-    online: "text-brand", warning: "text-amber-700", critical: "text-red-700",
-    info: "text-blue-700", muted: "text-gray-700",
+    online: "text-brand", warning: "text-[var(--color-warn)]", critical: "text-[var(--color-danger)]",
+    info: "text-[var(--color-info)]", muted: "text-[var(--color-ink-2)]",
   }[tone];
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] px-3 py-2.5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">{label}</p>
       <p className={`mt-1 text-sm font-bold ${toneText}`}>{value}</p>
     </div>
   );
@@ -82,15 +82,15 @@ function StatusItem({ label, value, tone = "muted" }) {
 
 function DeviceRow({ node }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-gray-200 px-3 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-[var(--color-border)] px-3 py-2.5">
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">{node.name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-sm font-semibold text-[var(--color-ink)]">{node.name}</p>
+        <p className="text-xs text-[var(--color-muted)]">
           {node.ip} · {node.rssiDbm} dBm · fw {node.firmware}
         </p>
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <span className="text-xs text-gray-500">Last comm {node.lastComm}</span>
+        <span className="text-xs text-[var(--color-muted)]">Last comm {node.lastComm}</span>
         <StatusChip tone={node.online ? "online" : "critical"}>{node.online ? "Online" : "Offline"}</StatusChip>
       </div>
     </div>
@@ -99,10 +99,10 @@ function DeviceRow({ node }) {
 
 function SensorRow({ sensor }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-gray-200 px-3 py-2.5">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-[var(--color-border)] px-3 py-2.5">
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">{sensor.name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-sm font-semibold text-[var(--color-ink)]">{sensor.name}</p>
+        <p className="text-xs text-[var(--color-muted)]">
           Last reading: {sensor.lastReading} · Updated {sensor.lastUpdate}
         </p>
       </div>
@@ -119,8 +119,8 @@ function MaintenanceButton({ label, onClick, busy, danger }) {
       disabled={busy}
       className={`rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 ${
         danger
-          ? "border-red-200 text-red-600 hover:bg-red-50"
-          : "border-gray-300 text-ink hover:bg-gray-50"
+          ? "border-red-200 text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)]"
+          : "border-[var(--color-border-strong)] text-[var(--color-ink)] hover:bg-[var(--color-surface-2)]"
       }`}
     >
       {busy ? "Working…" : label}
@@ -214,19 +214,19 @@ export default function SystemSettings({ dashboard }) {
   // ---- loading / error --------------------------------------------------
   if (loading && !settings) {
     return (
-      <div className="mx-auto max-w-6xl rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+      <div className="mx-auto max-w-6xl rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-sm text-[var(--color-muted)]">
         Loading system settings…
       </div>
     );
   }
   if (error && !settings) {
     return (
-      <div className="mx-auto max-w-6xl rounded-xl border border-red-200 bg-red-50 p-6">
-        <p className="text-sm font-bold text-red-700">Could not load system settings</p>
-        <p className="mt-1 text-xs text-red-600">{error}</p>
+      <div className="mx-auto max-w-6xl rounded-xl border border-red-200 bg-[var(--color-danger-bg)] p-6">
+        <p className="text-sm font-bold text-[var(--color-danger)]">Could not load system settings</p>
+        <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p>
         <button
           onClick={reload}
-          className="mt-3 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+          className="mt-3 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-[var(--color-danger)] hover:bg-red-100"
         >
           Retry
         </button>
@@ -251,7 +251,7 @@ export default function SystemSettings({ dashboard }) {
     <div className="mx-auto max-w-6xl space-y-4 overflow-x-clip pb-4">
       {/* header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-xl font-bold text-ink">System Settings</h1>
+        <h1 className="text-xl font-bold text-[var(--color-ink)]">System Settings</h1>
         {!canEdit && <StatusChip tone="warning">Read-only (viewer role)</StatusChip>}
       </div>
 
@@ -263,7 +263,7 @@ export default function SystemSettings({ dashboard }) {
             type="button"
             onClick={() => doMaintenance("refresh-data")}
             disabled={maintBusy === "refresh-data"}
-            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-lg border border-[var(--color-border-strong)] px-2.5 py-1.5 text-xs font-semibold text-[var(--color-ink)] hover:bg-[var(--color-surface-2)] disabled:opacity-50"
           >
             {maintBusy === "refresh-data" ? "Refreshing…" : "Refresh"}
           </button>
@@ -338,7 +338,7 @@ export default function SystemSettings({ dashboard }) {
               </Field>
             </div>
 
-            <div className="rounded-lg border border-gray-200 p-3">
+            <div className="rounded-lg border border-[var(--color-border)] p-3">
               <ToggleRow
                 id="irr-rain"
                 label="Rainfall Skip"
@@ -391,7 +391,7 @@ export default function SystemSettings({ dashboard }) {
               </Field>
             </div>
 
-            <div className="rounded-lg border border-gray-200 p-3 space-y-1">
+            <div className="rounded-lg border border-[var(--color-border)] p-3 space-y-1">
               <ToggleRow id="w-leak" label="Leak Detection" checked={draft.water.leakDetectionEnabled} disabled={!canEdit} onChange={(v) => up(["water", "leakDetectionEnabled"], v)} />
               <ToggleRow id="w-dryrun" label="Dry-Run Protection" checked={draft.water.dryRunProtectionEnabled} disabled={!canEdit} onChange={(v) => up(["water", "dryRunProtectionEnabled"], v)} />
               <div className="pt-1">
@@ -440,7 +440,7 @@ export default function SystemSettings({ dashboard }) {
             />
           </Field>
 
-          <div className="rounded-lg border border-gray-200 p-3 sm:col-span-2">
+          <div className="rounded-lg border border-[var(--color-border)] p-3 sm:col-span-2">
             <ToggleRow id="en-solarprio" label="Solar Priority" checked={draft.energy.solarPriority} disabled={!canEdit} onChange={(v) => up(["energy", "solarPriority"], v)} />
             <ToggleRow id="en-gridbk" label="Grid Backup" checked={draft.energy.gridBackup} disabled={!canEdit} onChange={(v) => up(["energy", "gridBackup"], v)} />
             <ToggleRow id="en-ats" label="Automatic Transfer" checked={draft.energy.automaticTransfer} disabled={!canEdit} onChange={(v) => up(["energy", "automaticTransfer"], v)} />
@@ -459,13 +459,13 @@ export default function SystemSettings({ dashboard }) {
       <SettingsCard title="Devices & Sensors">
         <div className="grid gap-4 lg:grid-cols-2">
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">ESP32 Nodes</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">ESP32 Nodes</p>
             <div className="space-y-2">
               {(devices?.nodes ?? []).map((n) => <DeviceRow key={n.id} node={n} />)}
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Sensors</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Sensors</p>
             <div className="space-y-2">
               {(devices?.sensors ?? []).map((s) => <SensorRow key={s.id} sensor={s} />)}
             </div>
@@ -477,8 +477,8 @@ export default function SystemSettings({ dashboard }) {
       <SettingsCard title="Alerts & Notifications">
         <div className="grid gap-5 lg:grid-cols-2">
           <div>
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500">Alert on</p>
-            <div className="divide-y divide-gray-100">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Alert on</p>
+            <div className="divide-y divide-[var(--color-border)]">
               {NOTIFICATION_EVENTS.map(([key, label]) => (
                 <ToggleRow
                   key={key}
@@ -492,8 +492,8 @@ export default function SystemSettings({ dashboard }) {
             </div>
           </div>
           <div>
-            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-gray-500">Delivery channels</p>
-            <div className="divide-y divide-gray-100">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)]">Delivery channels</p>
+            <div className="divide-y divide-[var(--color-border)]">
               {NOTIFICATION_CHANNELS.map(([key, label]) => (
                 <ToggleRow
                   key={key}
@@ -512,7 +512,7 @@ export default function SystemSettings({ dashboard }) {
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 8. SYSTEM INFORMATION */}
         <SettingsCard title="System Information">
-          <dl className="divide-y divide-gray-100 text-sm">
+          <dl className="divide-y divide-[var(--color-border)] text-sm">
             {[
               ["Firmware Version", meta?.firmwareVersion],
               ["Backend Version", meta?.backendVersion],
@@ -522,8 +522,8 @@ export default function SystemSettings({ dashboard }) {
               ["System Uptime", meta?.uptime],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between gap-4 py-2.5">
-                <dt className="text-gray-500">{label}</dt>
-                <dd className="font-semibold text-ink">{value ?? "—"}</dd>
+                <dt className="text-[var(--color-muted)]">{label}</dt>
+                <dd className="font-semibold text-[var(--color-ink)]">{value ?? "—"}</dd>
               </div>
             ))}
           </dl>
@@ -540,7 +540,7 @@ export default function SystemSettings({ dashboard }) {
           </div>
 
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50/50 p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-red-700">Danger Zone</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-danger)]">Danger Zone</p>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <MaintenanceButton
                 label="Factory Reset"
@@ -569,7 +569,7 @@ export default function SystemSettings({ dashboard }) {
                 }
               />
             </div>
-            {!canEdit && <p className="mt-2 text-[11px] text-red-600">Maintenance actions require an administrator.</p>}
+            {!canEdit && <p className="mt-2 text-[11px] text-[var(--color-danger)]">Maintenance actions require an administrator.</p>}
           </div>
         </SettingsCard>
       </div>

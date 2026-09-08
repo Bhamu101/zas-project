@@ -81,12 +81,12 @@ export default function CropHealth() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-8">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-8">
         <div className="flex items-center gap-3 mb-4">
           <Sparkles size={26} className="text-brand shrink-0" />
           <div>
-            <h2 className="text-base font-bold text-ink">Diagnose a Plant</h2>
-            <p className="text-xs text-muted">Upload a photo of a leaf or plant for an instant AI diagnosis</p>
+            <h2 className="text-base font-bold text-[var(--color-ink)]">Diagnose a Plant</h2>
+            <p className="text-xs text-[var(--color-muted)]">Upload a photo of a leaf or plant for an instant AI diagnosis</p>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export default function CropHealth() {
         {!preview && (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-12 text-muted hover:border-brand hover:text-brand transition-colors"
+            className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--color-border)] py-12 text-[var(--color-muted)] hover:border-brand hover:text-brand transition-colors"
           >
             <ImageUp size={28} />
             <span className="text-sm font-medium">Click to upload a photo</span>
@@ -111,14 +111,14 @@ export default function CropHealth() {
 
         {preview && (
           <div className="space-y-4">
-            <img src={preview} alt="Selected plant" className="w-full max-h-80 object-cover rounded-xl border border-gray-100" />
+            <img src={preview} alt="Selected plant" className="w-full max-h-80 object-cover rounded-xl border border-[var(--color-border)]" />
             {!diagnosis && (
               <div className="flex gap-3">
                 <button
                   onClick={analyze}
                   disabled={loading}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors ${
-                    loading ? "bg-card text-muted cursor-not-allowed" : "bg-brand text-white hover:bg-brand-dark"
+                    loading ? "bg-[var(--color-surface-2)] text-[var(--color-muted)] cursor-not-allowed" : "bg-brand text-[var(--color-brand-ink)] hover:bg-brand-strong"
                   }`}
                 >
                   <Sparkles size={16} />
@@ -127,7 +127,7 @@ export default function CropHealth() {
                 <button
                   onClick={reset}
                   disabled={loading}
-                  className="px-4 rounded-xl border border-gray-200 text-sm font-medium text-muted hover:bg-card transition-colors"
+                  className="px-4 rounded-xl border border-[var(--color-border)] text-sm font-medium text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
                 >
                   Choose different photo
                 </button>
@@ -137,7 +137,7 @@ export default function CropHealth() {
         )}
 
         {error && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-red-600 rounded-xl px-4 py-3" style={{ backgroundColor: "#ef44441a" }}>
+          <div className="mt-4 flex items-center gap-2 text-sm text-[var(--color-danger)] rounded-xl px-4 py-3" style={{ backgroundColor: "#ef44441a" }}>
             <AlertTriangle size={16} className="shrink-0" />
             {error}
           </div>
@@ -145,13 +145,13 @@ export default function CropHealth() {
 
         {diagnosis && (
           <div className="mt-4 space-y-4">
-            <div className="flex items-center gap-3 bg-card rounded-xl p-4">
+            <div className="flex items-center gap-3 bg-[var(--color-surface-2)] rounded-xl p-4">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: statusMeta.bg }}>
                 <StatusIcon size={22} style={{ color: statusMeta.color }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-ink truncate">{diagnosis.plantIdentified}</p>
-                <p className="text-xs text-muted">{diagnosis.confidencePct}% confidence</p>
+                <p className="text-sm font-bold text-[var(--color-ink)] truncate">{diagnosis.plantIdentified}</p>
+                <p className="text-xs text-[var(--color-muted)]">{diagnosis.confidencePct}% confidence</p>
               </div>
               <span
                 className="text-xs font-bold px-3 py-1.5 rounded-full shrink-0"
@@ -162,24 +162,24 @@ export default function CropHealth() {
             </div>
 
             <div>
-              <p className="text-xs font-bold text-muted uppercase tracking-wide">Condition</p>
-              <p className="text-lg font-bold text-ink mt-0.5">{diagnosis.condition}</p>
-              <p className="text-sm text-muted leading-relaxed mt-2">{diagnosis.description}</p>
+              <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">Condition</p>
+              <p className="text-lg font-bold text-[var(--color-ink)] mt-0.5">{diagnosis.condition}</p>
+              <p className="text-sm text-[var(--color-muted)] leading-relaxed mt-2">{diagnosis.description}</p>
             </div>
 
             <div className="rounded-xl p-4" style={{ backgroundColor: "#15803d0d", border: "1px solid #15803d33" }}>
-              <p className="text-sm font-bold text-brand-dark mb-1">Recommended Treatment</p>
-              <p className="text-sm text-ink leading-relaxed">{diagnosis.treatment}</p>
+              <p className="text-sm font-bold text-[var(--color-brand-text)] mb-1">Recommended Treatment</p>
+              <p className="text-sm text-[var(--color-ink)] leading-relaxed">{diagnosis.treatment}</p>
             </div>
 
             <div>
-              <p className="text-xs font-bold text-muted uppercase tracking-wide">Prevention</p>
-              <p className="text-sm text-muted leading-relaxed mt-1">{diagnosis.preventionTips}</p>
+              <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide">Prevention</p>
+              <p className="text-sm text-[var(--color-muted)] leading-relaxed mt-1">{diagnosis.preventionTips}</p>
             </div>
 
             <button
               onClick={reset}
-              className="w-full rounded-xl py-3 text-sm font-bold bg-brand text-white hover:bg-brand-dark transition-colors"
+              className="w-full rounded-xl py-3 text-sm font-bold bg-brand text-[var(--color-brand-ink)] hover:bg-brand-strong transition-colors"
             >
               Diagnose Another Plant
             </button>

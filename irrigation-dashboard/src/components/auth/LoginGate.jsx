@@ -62,7 +62,7 @@ export default function LoginGate({ children }) {
 
   if (restoring) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg text-muted font-display">
+      <div className="flex min-h-screen items-center justify-center bg-bg text-[var(--color-muted)] font-display">
         Restoring session…
       </div>
     );
@@ -72,20 +72,20 @@ export default function LoginGate({ children }) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 font-display">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand">
             <Leaf size={20} className="text-[#0f0f0f]" strokeWidth={1.75} />
           </span>
           <div>
-            <h1 className="text-base font-bold leading-tight text-ink">Agri-Intelligence</h1>
-            <p className="text-xs leading-tight text-muted">Sign in to your farm dashboard</p>
+            <h1 className="text-base font-bold leading-tight text-[var(--color-ink)]">Agri-Intelligence</h1>
+            <p className="text-xs leading-tight text-[var(--color-muted)]">Sign in to your farm dashboard</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-ink">
+            <label htmlFor="email" className="mb-1.5 block text-xs font-semibold text-[var(--color-ink)]">
               Email address
             </label>
             <input
@@ -95,12 +95,12 @@ export default function LoginGate({ children }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-dark focus:ring-2 focus:ring-brand/40"
+              className="w-full rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-ink)] outline-none focus:border-brand-strong focus:ring-2 focus:ring-brand/40"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-ink">
+            <label htmlFor="password" className="mb-1.5 block text-xs font-semibold text-[var(--color-ink)]">
               Password
             </label>
             <input
@@ -110,12 +110,12 @@ export default function LoginGate({ children }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-brand-dark focus:ring-2 focus:ring-brand/40"
+              className="w-full rounded-xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-ink)] outline-none focus:border-brand-strong focus:ring-2 focus:ring-brand/40"
             />
           </div>
 
           {error && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            <p role="alert" className="rounded-lg bg-[var(--color-danger-bg)] px-3 py-2 text-xs font-semibold text-[var(--color-danger)]">
               {error}
             </p>
           )}

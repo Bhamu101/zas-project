@@ -1945,3 +1945,30 @@ NEXT: the 9 remaining pages, pending user review of this foundation.
 - Sidebar.jsx — regrouped: new "AI Assistant" group holds Goho AI + Crop Health
   (both Gemini-backed). Crop Health moved out of Monitoring, which now holds the
   sensor-driven screens only (Bed Monitoring, Aerial View). Overview is Dashboard.
+
+## 2026-09-08 — Router + all 10 pages migrated onto the design system
+
+- react-router-dom added; src/routes.js is the single route table. HashRouter
+  (not BrowserRouter) because Electron loads dist/index.html over file:// in
+  production, where history-API routes break. Sidebar/TopBar keep their existing
+  activePage + onNavigate(id) contract; the router is wired in behind it.
+  TopBar titles now come from routes.js so they can't drift from the URLs.
+  Unknown path redirects to the dashboard. Verified all 10 route ids match the
+  sidebar entries in both directions.
+- ~435 legacy colour utilities across all 9 remaining pages and 14 components
+  migrated to semantic tokens by rule (bg-white/text-gray-*/border-gray-*/
+  bg-card/text-ink/text-muted -> --color-surface/-ink/-muted/-border, and the
+  red/amber/green/blue literals -> --color-danger/-warn/-ok/-info).
+- FIXED A REAL CONTRAST BUG found during the migration: 10 places used
+  `bg-brand text-white` — white on lime #C7FF2E is about 1.6:1, effectively
+  unreadable. index.css was force-correcting it via an unlayered .bg-brand rule,
+  so it rendered fine by accident while the markup said otherwise. Now explicit
+  (text-[var(--color-brand-ink)]).
+- DELETED the ~98-line transitional [data-theme="dark"] utility-override block.
+  With every component on tokens it had no remaining call sites, so dark mode is
+  now purely token re-pointing. index.css is 184 lines total.
+- Removed the deprecated --color-brand-dark / -lime / -card / -graphite / -steel
+  aliases after repointing their last 12 uses to --color-brand-strong / -brand.
+
+Verified: eslint clean, build succeeds, all 53 modules compile through Vite,
+zero legacy colour utilities remain outside index.css. Not verified in a browser.

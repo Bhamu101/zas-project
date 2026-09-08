@@ -8,16 +8,16 @@ export default function WeatherForecast({ weather }) {
     <div className={`${GLASS_CARD} p-4`}>
       <div className="flex items-center gap-2 mb-3">
         <CloudSun size={18} className="text-brand" />
-        <h3 className="text-sm font-bold text-ink">WEATHER FORECAST</h3>
+        <h3 className="text-sm font-bold text-[var(--color-ink)]">WEATHER FORECAST</h3>
       </div>
 
       <div className="flex items-center gap-4 pb-3 border-b border-black/5">
         <CloudSun size={36} className="text-amber-500" />
         <div>
-          <p className="text-2xl font-bold text-ink leading-none">{weather.current.temp}&deg;C</p>
-          <p className="text-sm text-muted mt-1">{weather.current.condition}</p>
+          <p className="text-2xl font-bold text-[var(--color-ink)] leading-none">{weather.current.temp}&deg;C</p>
+          <p className="text-sm text-[var(--color-muted)] mt-1">{weather.current.condition}</p>
         </div>
-        <p className="ml-auto text-xs text-muted">
+        <p className="ml-auto text-xs text-[var(--color-muted)]">
           Min: {weather.current.min}&deg;C &nbsp; Max: {weather.current.max}&deg;C
         </p>
       </div>
@@ -27,10 +27,10 @@ export default function WeatherForecast({ weather }) {
           const Icon = iconMap[d.condition] || Cloud;
           return (
             <div key={d.day} className="text-center">
-              <p className="text-xs font-bold text-muted mb-1.5">{d.day}</p>
+              <p className="text-xs font-bold text-[var(--color-muted)] mb-1.5">{d.day}</p>
               <Icon size={20} className="mx-auto text-amber-500" />
-              <p className="text-sm font-semibold text-ink mt-1.5">{d.high}&deg;C</p>
-              <p className="text-xs text-muted">{d.low}&deg;C</p>
+              <p className="text-sm font-semibold text-[var(--color-ink)] mt-1.5">{d.high}&deg;C</p>
+              <p className="text-xs text-[var(--color-muted)]">{d.low}&deg;C</p>
             </div>
           );
         })}

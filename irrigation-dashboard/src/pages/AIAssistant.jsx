@@ -56,11 +56,11 @@ export default function AIAssistant() {
   }
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm flex flex-col h-full">
-      <div className="flex items-center gap-2 p-4 border-b border-gray-100 shrink-0">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm flex flex-col h-full">
+      <div className="flex items-center gap-2 p-4 border-b border-[var(--color-border)] shrink-0">
         <Bot size={18} className="text-brand" />
         <div>
-          <h2 className="text-sm font-bold text-ink">Goho AI</h2>
+          <h2 className="text-sm font-bold text-[var(--color-ink)]">Goho AI</h2>
         </div>
       </div>
 
@@ -72,13 +72,13 @@ export default function AIAssistant() {
             )}
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
-                m.role === "user" ? "bg-brand text-white rounded-tr-sm" : "bg-card text-ink rounded-tl-sm"
+                m.role === "user" ? "bg-brand text-[var(--color-brand-ink)] rounded-tr-sm" : "bg-[var(--color-surface-2)] text-[var(--color-ink)] rounded-tl-sm"
               }`}
             >
               {m.content}
             </div>
             {m.role === "user" && (
-              <User size={22} className="text-muted shrink-0 mt-1" />
+              <User size={22} className="text-[var(--color-muted)] shrink-0 mt-1" />
             )}
           </div>
         ))}
@@ -86,19 +86,19 @@ export default function AIAssistant() {
         {loading && (
           <div className="flex items-start gap-2 justify-start">
             <Bot size={22} className="text-brand shrink-0 mt-1" />
-            <div className="bg-card text-muted rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm">Thinking&hellip;</div>
+            <div className="bg-[var(--color-surface-2)] text-[var(--color-muted)] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm">Thinking&hellip;</div>
           </div>
         )}
 
         {error && (
-          <div className="flex items-center gap-2 text-xs text-red-600 rounded-xl px-3 py-2.5" style={{ backgroundColor: "#ef44441a" }}>
+          <div className="flex items-center gap-2 text-xs text-[var(--color-danger)] rounded-xl px-3 py-2.5" style={{ backgroundColor: "#ef44441a" }}>
             <AlertTriangle size={14} className="shrink-0" />
             {error}
           </div>
         )}
       </div>
 
-      <div className="p-4 border-t border-gray-100 shrink-0">
+      <div className="p-4 border-t border-[var(--color-border)] shrink-0">
         <div className="flex items-end gap-2">
           <textarea
             value={input}
@@ -106,13 +106,13 @@ export default function AIAssistant() {
             onKeyDown={handleKeyDown}
             placeholder="Ask a question about your farm..."
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/40"
+            className="flex-1 resize-none rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-brand/40"
           />
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
             className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-xl transition-colors ${
-              loading || !input.trim() ? "bg-card text-muted cursor-not-allowed" : "bg-brand text-white hover:bg-brand-dark"
+              loading || !input.trim() ? "bg-[var(--color-surface-2)] text-[var(--color-muted)] cursor-not-allowed" : "bg-brand text-[var(--color-brand-ink)] hover:bg-brand-strong"
             }`}
           >
             <Send size={18} />

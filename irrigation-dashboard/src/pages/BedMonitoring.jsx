@@ -7,21 +7,21 @@ import { bedTargets } from "../lib/cropTargets";
 
 const STATE_STYLE = {
   critical: {
-    hex: "#ef4444", badgeText: "text-red-600", label: "Critical",
+    hex: "#ef4444", badgeText: "text-[var(--color-danger)]", label: "Critical",
     icon: AlertTriangle, message: "Moisture below trigger threshold",
     actionLabel: "Start Irrigation", actionIcon: Droplet, filled: true,
     recommend: (vwc, t) =>
       `Moisture is critically low at ${vwc}% — below the ${t.crop || "crop"} trigger of ${t.vwcTrigger}%. Start irrigation immediately.`,
   },
   "needs-water": {
-    hex: "#f59e0b", badgeText: "text-amber-700", label: "Needs Water",
+    hex: "#f59e0b", badgeText: "text-[var(--color-warn)]", label: "Needs Water",
     icon: AlertTriangle, message: "Moisture below optimal range",
     actionLabel: "Monitor", actionIcon: Eye, filled: false,
     recommend: (vwc, t) =>
       `At ${vwc}%, moisture is below the ${t.crop ? `${t.crop} ` : ""}optimal band (${t.vwcOptimalMin}–${t.vwcOptimalMax}%). Irrigate in the next cycle.`,
   },
   optimal: {
-    hex: "#16a34a", badgeText: "text-brand-dark", label: "Optimal",
+    hex: "#16a34a", badgeText: "text-[var(--color-brand-text)]", label: "Optimal",
     icon: CheckCircle2, message: "Moisture within optimal range",
     actionLabel: "No Action Required", actionIcon: Check, filled: false,
     recommend: (vwc, t) =>
@@ -57,9 +57,9 @@ function RangeBar({ vwc, trigger, optMin, optMax, color }) {
           <div className="bg-red-500" style={{ width: `${trigger}%` }} />
           <div className="bg-amber-500" style={{ width: `${Math.max(0, optMin - trigger)}%` }} />
           <div className="bg-brand" style={{ width: `${Math.max(0, optMax - optMin)}%` }} />
-          <div className="bg-gray-200" style={{ width: `${Math.max(0, 100 - optMax)}%` }} />
+          <div className="bg-[var(--color-border-strong)]" style={{ width: `${Math.max(0, 100 - optMax)}%` }} />
         </div>
-        <div className="relative h-3 mt-1.5 text-[10px] text-muted">
+        <div className="relative h-3 mt-1.5 text-[10px] text-[var(--color-muted)]">
           {[...new Set([0, trigger, optMin, optMax, 100])]
             .sort((a, b) => a - b)
             .map((tick) => (
@@ -88,9 +88,9 @@ function BedCard({ bed, systemInfo, onNavigate }) {
   const t = bedTargets(bed, systemInfo);
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-ink whitespace-nowrap">
+        <h3 className="text-xl font-bold text-[var(--color-ink)] whitespace-nowrap">
           {bed.name}{t.crop ? `: ${t.crop}` : ""}
         </h3>
         <span className={`text-sm font-bold lowercase first-letter:uppercase whitespace-nowrap ${s.badgeText}`}>
@@ -99,14 +99,14 @@ function BedCard({ bed, systemInfo, onNavigate }) {
       </div>
 
       <div className="flex items-center gap-2 mb-1">
-        <Droplets size={14} className="text-muted" />
-        <p className="text-xs text-muted">Soil Moisture (VWC)</p>
+        <Droplets size={14} className="text-[var(--color-muted)]" />
+        <p className="text-xs text-[var(--color-muted)]">Soil Moisture (VWC)</p>
       </div>
       <p className="text-3xl font-bold mb-1" style={{ color: s.hex }}>{bed.vwc}%</p>
 
       <RangeBar vwc={bed.vwc} trigger={t.vwcTrigger} optMin={t.vwcOptimalMin} optMax={t.vwcOptimalMax} color={s.hex} />
 
-      <div className="flex items-center justify-between text-xs text-muted mt-3 pt-3 border-t border-gray-100">
+      <div className="flex items-center justify-between text-xs text-[var(--color-muted)] mt-3 pt-3 border-t border-[var(--color-border)]">
         <span>{t.crop ? `${t.crop} optimal` : "Optimal range"}: {t.vwcOptimalMin}% - {t.vwcOptimalMax}%</span>
         <span>Trigger: &lt; {t.vwcTrigger}%</span>
       </div>
@@ -118,7 +118,7 @@ function BedCard({ bed, systemInfo, onNavigate }) {
       <button
         onClick={() => onNavigate?.("irrigation")}
         className={`w-full flex items-center justify-center gap-2 text-sm font-bold rounded-xl py-2.5 mt-4 transition-colors ${
-          s.filled ? "text-white hover:opacity-90" : "border hover:bg-card"
+          s.filled ? "text-white hover:opacity-90" : "border hover:bg-[var(--color-surface-2)]"
         }`}
         style={s.filled ? { backgroundColor: s.hex } : { borderColor: s.hex, color: s.hex }}
       >
@@ -144,9 +144,9 @@ function MoistureTrendChart({ beds, systemInfo }) {
   });
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-      <h3 className="text-sm font-bold text-ink mb-3 shrink-0">
-        Moisture Trend <span className="text-muted font-normal text-xs">(Last 12 Hours)</span>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
+      <h3 className="text-sm font-bold text-[var(--color-ink)] mb-3 shrink-0">
+        Moisture Trend <span className="text-[var(--color-muted)] font-normal text-xs">(Last 12 Hours)</span>
       </h3>
       <div className="relative flex-1 min-h-[180px]">
         <div className="absolute inset-0">
@@ -187,15 +187,15 @@ function MoistureTrendChart({ beds, systemInfo }) {
         {beds.map((b) => (
           <div key={b.id} className="flex items-center gap-1.5 text-xs">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATE_STYLE[b.state]?.hex }} />
-            <span className="text-muted">
+            <span className="text-[var(--color-muted)]">
               {b.name}{bedTargets(b, systemInfo).crop ? `: ${bedTargets(b, systemInfo).crop}` : ""}
             </span>
-            <span className="font-bold text-ink">{b.vwc}%</span>
+            <span className="font-bold text-[var(--color-ink)]">{b.vwc}%</span>
           </div>
         ))}
       </div>
       {systemInfo && (
-        <p className="text-[11px] text-muted mt-2 text-center shrink-0">
+        <p className="text-[11px] text-[var(--color-muted)] mt-2 text-center shrink-0">
           Shaded bands show each crop's optimal moisture range
         </p>
       )}
@@ -205,10 +205,10 @@ function MoistureTrendChart({ beds, systemInfo }) {
 
 function RecommendedActions({ beds, systemInfo, onNavigate }) {
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3 shrink-0">
         <Sprout size={16} className="text-brand" />
-        <h3 className="text-sm font-bold text-ink">Recommended Actions</h3>
+        <h3 className="text-sm font-bold text-[var(--color-ink)]">Recommended Actions</h3>
       </div>
       <div className="space-y-2 flex-1">
         {beds.map((bed) => {
@@ -220,10 +220,10 @@ function RecommendedActions({ beds, systemInfo, onNavigate }) {
               <div className="flex items-start gap-2">
                 <Icon size={15} className="shrink-0 mt-0.5" style={{ color: s.hex }} />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-ink">
+                  <p className="text-sm font-bold text-[var(--color-ink)]">
                     {bed.name}{t.crop ? `: ${t.crop}` : ""}
                   </p>
-                  <p className="text-xs text-muted mt-0.5 leading-snug">{s.recommend(bed.vwc, t)}</p>
+                  <p className="text-xs text-[var(--color-muted)] mt-0.5 leading-snug">{s.recommend(bed.vwc, t)}</p>
                 </div>
               </div>
             </div>
@@ -242,10 +242,10 @@ function RecommendedActions({ beds, systemInfo, onNavigate }) {
 
 function RecentActivity({ items = [], onNavigate }) {
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
       <div className="flex items-center gap-2 mb-3 shrink-0">
         <Clock size={16} className="text-brand" />
-        <h3 className="text-sm font-bold text-ink">Recent Activity</h3>
+        <h3 className="text-sm font-bold text-[var(--color-ink)]">Recent Activity</h3>
       </div>
       <div className="space-y-3 flex-1">
         {items.map((item) => (
@@ -255,9 +255,9 @@ function RecentActivity({ items = [], onNavigate }) {
               style={{ backgroundColor: ACTIVITY_COLOR[item.color] || ACTIVITY_COLOR.blue }}
             />
             <div className="min-w-0">
-              <p className="text-[10px] text-muted">{item.time}</p>
-              <p className="text-xs font-semibold text-ink leading-snug">{item.title}</p>
-              <p className="text-[11px] text-muted">{item.subtitle}</p>
+              <p className="text-[10px] text-[var(--color-muted)]">{item.time}</p>
+              <p className="text-xs font-semibold text-[var(--color-ink)] leading-snug">{item.title}</p>
+              <p className="text-[11px] text-[var(--color-muted)]">{item.subtitle}</p>
             </div>
           </div>
         ))}
@@ -290,12 +290,12 @@ export default function BedMonitoring({ beds = [], systemInfo, bedActivity = [],
     <div className="space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {summaryStats.map((s) => (
-          <div key={s.label} className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          <div key={s.label} className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex items-center gap-3">
             <s.Icon size={26} className="shrink-0" style={{ color: s.hex }} />
             <div className="min-w-0">
-              <p className="text-2xl font-bold text-ink leading-none">{s.value}</p>
-              <p className="text-xs font-bold text-ink mt-1">{s.label}</p>
-              <p className="text-[11px] text-muted">{s.sublabel}</p>
+              <p className="text-2xl font-bold text-[var(--color-ink)] leading-none">{s.value}</p>
+              <p className="text-xs font-bold text-[var(--color-ink)] mt-1">{s.label}</p>
+              <p className="text-[11px] text-[var(--color-muted)]">{s.sublabel}</p>
             </div>
           </div>
         ))}

@@ -15,7 +15,7 @@ const IRRIGATE_OFF_MS = 45000;
 function batteryColor(pct) {
   if (pct >= 50) return { text: "text-brand" };
   if (pct >= 20) return { text: "text-amber-500" };
-  return { text: "text-red-500" };
+  return { text: "text-[var(--color-danger)]" };
 }
 
 export default function LiveOperationsSimulator({ batteryPct = 50, irrigationStatus, activeSourceLabel, onBatteryChange }) {
@@ -72,30 +72,30 @@ export default function LiveOperationsSimulator({ batteryPct = 50, irrigationSta
   const isCharging = (activeSourceLabel || "").toLowerCase().includes("solar") && !irrigating;
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-      <h2 className="text-sm font-bold text-ink mb-4">LIVE OPERATIONS</h2>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
+      <h2 className="text-sm font-bold text-[var(--color-ink)] mb-4">LIVE OPERATIONS</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-gray-100 p-4">
-          <span className="block text-xs font-bold text-muted uppercase tracking-wide mb-3">Irrigation</span>
-          <p className={`text-xl font-bold ${irrigating ? "text-blue-500" : "text-ink"}`}>
+        <div className="rounded-xl border border-[var(--color-border)] p-4">
+          <span className="block text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide mb-3">Irrigation</span>
+          <p className={`text-xl font-bold ${irrigating ? "text-blue-500" : "text-[var(--color-ink)]"}`}>
             {irrigating ? "In Progress" : "Idle"}
           </p>
-          <p className="text-xs text-muted mt-1">
+          <p className="text-xs text-[var(--color-muted)] mt-1">
             {irrigating ? `Drawing ${drawKw} kW from ${activeSourceLabel || "source"}` : "Waiting for next scheduled cycle"}
           </p>
-          <div className="w-full h-2 bg-card rounded-full overflow-hidden mt-3">
+          <div className="w-full h-2 bg-[var(--color-surface-2)] rounded-full overflow-hidden mt-3">
             <div
-              className={`h-full transition-all duration-[4000ms] ease-linear ${irrigating ? "bg-blue-500" : "bg-gray-300"}`}
+              className={`h-full transition-all duration-[4000ms] ease-linear ${irrigating ? "bg-[var(--color-info)]" : "bg-[var(--color-border-strong)]"}`}
               style={{ width: `${cycleProgress}%` }}
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-100 p-4">
-          <span className="block text-xs font-bold text-muted uppercase tracking-wide mb-3">Battery (live)</span>
+        <div className="rounded-xl border border-[var(--color-border)] p-4">
+          <span className="block text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide mb-3">Battery (live)</span>
           <p className={`text-xl font-bold ${battText}`}>{simBattery.toFixed(1)}%</p>
-          <p className="text-xs text-muted mt-1">
+          <p className="text-xs text-[var(--color-muted)] mt-1">
             {(activeSourceLabel || "").toLowerCase().includes("battery")
               ? "Discharging to power the farm"
               : (activeSourceLabel || "").toLowerCase().includes("solar")

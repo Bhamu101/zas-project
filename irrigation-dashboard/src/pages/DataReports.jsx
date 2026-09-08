@@ -21,13 +21,13 @@ const RANGE_OPTIONS = [
   { value: "1w", label: "Last week", points: 2 },
 ];
 const selectClass =
-  "text-sm font-medium text-ink border border-gray-200 rounded-xl px-3 py-2.5 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/40";
+  "text-sm font-medium text-[var(--color-ink)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 bg-surface focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 function DeltaLine({ value, goodDirection = "down" }) {
   const isDown = value < 0;
   const isGood = goodDirection === "down" ? isDown : !isDown;
   return (
-    <p className={`text-xs mt-1 ${isGood ? "text-brand" : "text-red-500"}`}>
+    <p className={`text-xs mt-1 ${isGood ? "text-brand" : "text-[var(--color-danger)]"}`}>
       {value < 0 ? "−" : "+"}{Math.abs(value)}% vs last season
     </p>
   );
@@ -50,10 +50,10 @@ function SeriesChart({ title, series, strokeColor, gradientId, season, points })
   if (points) rows = rows.slice(-points);
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
       <div className="flex items-center justify-between mb-2 shrink-0 flex-wrap gap-2">
-        <h3 className="text-xs font-bold text-ink">{title}</h3>
-        <div className="flex items-center gap-3 text-[11px] text-muted">
+        <h3 className="text-xs font-bold text-[var(--color-ink)]">{title}</h3>
+        <div className="flex items-center gap-3 text-[11px] text-[var(--color-muted)]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-0.5 rounded-full" style={{ backgroundColor: strokeColor }} /> {primaryLabel}
           </span>
@@ -90,8 +90,8 @@ function IrrigationEventsCard({ breakdown, total }) {
   const data = breakdown.map((b) => ({ name: b.label, value: b.count, hex: COLOR_HEX[b.color] }));
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-      <h3 className="text-xs font-bold text-ink mb-3 shrink-0">IRRIGATION EVENTS</h3>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
+      <h3 className="text-xs font-bold text-[var(--color-ink)] mb-3 shrink-0">IRRIGATION EVENTS</h3>
       <div className="flex items-center gap-4 flex-1">
         <div className="relative w-28 h-28 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -102,18 +102,18 @@ function IrrigationEventsCard({ breakdown, total }) {
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <p className="text-xl font-bold text-ink leading-none">{total}</p>
-            <p className="text-[10px] text-muted mt-0.5">Total</p>
+            <p className="text-xl font-bold text-[var(--color-ink)] leading-none">{total}</p>
+            <p className="text-[10px] text-[var(--color-muted)] mt-0.5">Total</p>
           </div>
         </div>
         <div className="space-y-1.5 flex-1 min-w-0">
           {breakdown.map((b) => (
             <div key={b.label} className="flex items-center justify-between gap-2 text-xs">
-              <span className="flex items-center gap-1.5 text-muted truncate">
+              <span className="flex items-center gap-1.5 text-[var(--color-muted)] truncate">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLOR_HEX[b.color] }} />
                 {b.label}
               </span>
-              <span className="font-semibold text-ink shrink-0">{b.count} ({b.pct}%)</span>
+              <span className="font-semibold text-[var(--color-ink)] shrink-0">{b.count} ({b.pct}%)</span>
             </div>
           ))}
         </div>
@@ -130,16 +130,16 @@ function WaterUseByZoneCard({ zones }) {
   const max = Math.max(...zones.map((z) => z.m3));
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-      <h3 className="text-xs font-bold text-ink mb-3 shrink-0">WATER USE BY ZONE</h3>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
+      <h3 className="text-xs font-bold text-[var(--color-ink)] mb-3 shrink-0">WATER USE BY ZONE</h3>
       <div className="space-y-3 flex-1">
         {zones.map((z) => (
           <div key={z.zone}>
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-muted">{z.zone}</span>
-              <span className="font-semibold text-ink">{z.m3.toLocaleString()} m&sup3;</span>
+              <span className="text-[var(--color-muted)]">{z.zone}</span>
+              <span className="font-semibold text-[var(--color-ink)]">{z.m3.toLocaleString()} m&sup3;</span>
             </div>
-            <div className="w-full h-2 bg-card rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-[var(--color-surface-2)] rounded-full overflow-hidden">
               <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(z.m3 / max) * 100}%` }} />
             </div>
           </div>
@@ -156,13 +156,13 @@ function TopInsightsCard({ insights }) {
   if (!insights?.length) return null;
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-      <h3 className="text-xs font-bold text-ink mb-3 shrink-0">TOP INSIGHTS</h3>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
+      <h3 className="text-xs font-bold text-[var(--color-ink)] mb-3 shrink-0">TOP INSIGHTS</h3>
       <div className="space-y-3 flex-1">
         {insights.map((ins, i) => (
           <div key={i} className="min-w-0">
-            <p className="text-xs font-semibold text-ink leading-snug">{ins.headline}</p>
-            <p className="text-[11px] text-muted mt-0.5">{ins.subtext}</p>
+            <p className="text-xs font-semibold text-[var(--color-ink)] leading-snug">{ins.headline}</p>
+            <p className="text-[11px] text-[var(--color-muted)] mt-0.5">{ins.subtext}</p>
           </div>
         ))}
       </div>
@@ -204,8 +204,8 @@ export default function DataReports({ seasonSummary, dataReports }) {
     <div className="space-y-3">
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-ink">Data &amp; Reports</h1>
-          <p className="text-xs text-muted mt-0.5">{scopeLine}</p>
+          <h1 className="text-xl font-bold text-[var(--color-ink)]">Data &amp; Reports</h1>
+          <p className="text-xs text-[var(--color-muted)] mt-0.5">{scopeLine}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <select value={season} onChange={(e) => setSeason(e.target.value)} className={selectClass} aria-label="Season">
@@ -224,19 +224,19 @@ export default function DataReports({ seasonSummary, dataReports }) {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <button className="text-sm font-bold text-white bg-brand hover:bg-brand-dark rounded-xl px-4 py-2.5 transition-colors">
+          <button className="text-sm font-bold text-[var(--color-brand-ink)] bg-brand hover:bg-brand-strong rounded-xl px-4 py-2.5 transition-colors">
             Export Report
           </button>
         </div>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-sm font-bold text-ink mb-4">SEASON DATA SUMMARY</h2>
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
+        <h2 className="text-sm font-bold text-[var(--color-ink)] mb-4">SEASON DATA SUMMARY</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {stats.map((s) => (
             <div key={s.key} className="rounded-xl p-4" style={{ backgroundColor: `${s.hex}14` }}>
-              <p className="text-xs text-muted mb-2">{s.label}</p>
-              <p className="text-xl font-bold text-ink">{s.value}</p>
+              <p className="text-xs text-[var(--color-muted)] mb-2">{s.label}</p>
+              <p className="text-xl font-bold text-[var(--color-ink)]">{s.value}</p>
               <DeltaLine value={s.delta} goodDirection={s.goodDirection} />
             </div>
           ))}
@@ -269,10 +269,10 @@ export default function DataReports({ seasonSummary, dataReports }) {
       </div>
 
       {dataReports && (
-        <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+        <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
           <div className="mb-4">
-            <h2 className="text-sm font-bold text-ink">REPORTS</h2>
-            <p className="text-xs text-muted">Generate and download detailed reports.</p>
+            <h2 className="text-sm font-bold text-[var(--color-ink)]">REPORTS</h2>
+            <p className="text-xs text-[var(--color-muted)]">Generate and download detailed reports.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -280,10 +280,10 @@ export default function DataReports({ seasonSummary, dataReports }) {
               <button
                 key={r.key}
                 onClick={() => setSelectedReport(r.key)}
-                className="text-left border border-gray-100 rounded-xl p-4 hover:bg-card transition-colors"
+                className="text-left border border-[var(--color-border)] rounded-xl p-4 hover:bg-[var(--color-surface-2)] transition-colors"
               >
-                <p className="text-sm font-bold text-ink">{r.title}</p>
-                <p className="text-xs text-muted mt-0.5">{r.subtitle}</p>
+                <p className="text-sm font-bold text-[var(--color-ink)]">{r.title}</p>
+                <p className="text-xs text-[var(--color-muted)] mt-0.5">{r.subtitle}</p>
               </button>
             ))}
           </div>
@@ -301,29 +301,29 @@ export default function DataReports({ seasonSummary, dataReports }) {
           >
             <div className="flex items-start justify-between gap-3 mb-1">
               <div>
-                <h3 className="text-base font-bold text-ink">{activeDetail.title}</h3>
-                <p className="text-xs text-muted">{activeDetail.subtitle}</p>
+                <h3 className="text-base font-bold text-[var(--color-ink)]">{activeDetail.title}</h3>
+                <p className="text-xs text-[var(--color-muted)]">{activeDetail.subtitle}</p>
               </div>
               <button
                 onClick={() => setSelectedReport(null)}
-                className="shrink-0 text-xs font-bold text-muted hover:text-ink transition-colors"
+                className="shrink-0 text-xs font-bold text-[var(--color-muted)] hover:text-[var(--color-ink)] transition-colors"
               >
                 Close
               </button>
             </div>
 
-            <p className="text-sm text-muted leading-relaxed mt-4">{activeDetail.summary}</p>
+            <p className="text-sm text-[var(--color-muted)] leading-relaxed mt-4">{activeDetail.summary}</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">
               {activeDetail.rows.map((row) => (
-                <div key={row.label} className="bg-card rounded-xl p-3">
-                  <p className="text-[11px] text-muted">{row.label}</p>
-                  <p className="text-sm font-bold text-ink mt-1">{row.value}</p>
+                <div key={row.label} className="bg-[var(--color-surface-2)] rounded-xl p-3">
+                  <p className="text-[11px] text-[var(--color-muted)]">{row.label}</p>
+                  <p className="text-sm font-bold text-[var(--color-ink)] mt-1">{row.value}</p>
                 </div>
               ))}
             </div>
 
-            <button className="w-full mt-5 text-sm font-bold text-white bg-brand hover:bg-brand-dark rounded-xl py-3 transition-colors">
+            <button className="w-full mt-5 text-sm font-bold text-[var(--color-brand-ink)] bg-brand hover:bg-brand-strong rounded-xl py-3 transition-colors">
               Export Report
             </button>
           </div>

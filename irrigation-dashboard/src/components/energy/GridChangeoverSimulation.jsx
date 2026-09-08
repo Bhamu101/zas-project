@@ -77,7 +77,7 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
   const gridStatus = statusFor(gridScore, [75, 50, "Stable", "Fluctuating", "Unstable"]);
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
       <style>{`
         @keyframes flowdot {
           0% { left: 0%; opacity: 0; }
@@ -93,7 +93,7 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
         }
       `}</style>
 
-      <h2 className="text-sm font-bold text-ink mb-4">ATS CHANGEOVER</h2>
+      <h2 className="text-sm font-bold text-[var(--color-ink)] mb-4">ATS CHANGEOVER</h2>
 
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="flex flex-col gap-2.5 shrink-0 w-28 sm:w-32">
@@ -107,7 +107,7 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
                     className="h-6 w-2 rounded-full shrink-0 transition-colors duration-500"
                     style={{ backgroundColor: isActive ? color : "#e5e7eb" }}
                   />
-                  <span className={`text-[10px] font-semibold truncate ${isActive ? "text-ink" : "text-muted"}`}>
+                  <span className={`text-[10px] font-semibold truncate ${isActive ? "text-[var(--color-ink)]" : "text-[var(--color-muted)]"}`}>
                     {label}
                   </span>
                 </div>
@@ -123,7 +123,7 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
 
         <div
           className={`w-16 h-16 shrink-0 rounded-2xl border-2 flex items-center justify-center text-center transition-colors duration-300 ${
-            switching ? "border-amber-500 bg-amber-50" : "border-brand bg-brand/5"
+            switching ? "border-amber-500 bg-[var(--color-warn-bg)]" : "border-brand bg-brand/5"
           }`}
         >
           <span className={`text-[10px] font-bold uppercase tracking-wide ${switching ? "text-amber-500 animate-pulse" : "text-brand"}`}>
@@ -131,10 +131,10 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
           </span>
         </div>
 
-        <div className="w-4 h-0.5 bg-gray-300 shrink-0" />
+        <div className="w-4 h-0.5 bg-[var(--color-border-strong)] shrink-0" />
 
-        <div className="w-16 h-16 shrink-0 rounded-2xl border-2 border-gray-200 flex items-center justify-center text-center">
-          <span className="text-[10px] font-bold uppercase tracking-wide leading-tight text-ink">Farm Load</span>
+        <div className="w-16 h-16 shrink-0 rounded-2xl border-2 border-[var(--color-border)] flex items-center justify-center text-center">
+          <span className="text-[10px] font-bold uppercase tracking-wide leading-tight text-[var(--color-ink)]">Farm Load</span>
         </div>
       </div>
 
@@ -144,13 +144,13 @@ export default function GridChangeoverSimulation({ batteryPct, onSourceChange })
           : `Currently running on ${META[active].label}`}
       </p>
 
-      <div className="mt-3 rounded-xl border border-gray-100 bg-card/60 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-muted mb-1">Why this source</p>
-        <p className="text-sm text-ink leading-relaxed">{reason}</p>
+      <div className="mt-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-2)] p-3">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-muted)] mb-1">Why this source</p>
+        <p className="text-sm text-[var(--color-ink)] leading-relaxed">{reason}</p>
       </div>
 
-      <div className="flex items-center justify-center mt-3 pt-3 border-t border-gray-100">
-        <span className="text-[11px] text-muted">
+      <div className="flex items-center justify-center mt-3 pt-3 border-t border-[var(--color-border)]">
+        <span className="text-[11px] text-[var(--color-muted)]">
           Deciding factor: grid stability at <span className={`font-semibold ${gridStatus.color}`}>{gridScore}% ({gridStatus.label})</span>
         </span>
       </div>

@@ -12,7 +12,7 @@ export default function BatteryBars({ pct = 0, segments = 5, className = "", bar
         <div
           key={i}
           className={`${barHeight} flex-1 rounded transition-colors duration-700 ${
-            i < filled ? color : "bg-card border border-gray-200"
+            i < filled ? color : "bg-[var(--color-surface-2)] border border-[var(--color-border)]"
           }`}
         />
       ))}

@@ -37,7 +37,7 @@ function MoistureGauge({ percent, color, label }) {
         <circle cx={tip.x} cy={tip.y} r={7} fill="white" stroke={color} strokeWidth={3} />
       </svg>
       <div className="absolute inset-x-0 flex flex-col items-center" style={{ top: cy - 40 }}>
-        <p className="text-xl font-bold text-ink leading-none">{clamped}%</p>
+        <p className="text-xl font-bold text-[var(--color-ink)] leading-none">{clamped}%</p>
         <p className="text-[10px] font-semibold mt-1.5 whitespace-nowrap" style={{ color }}>{label}</p>
       </div>
     </div>
@@ -48,9 +48,9 @@ export default function SoilMoistureChart({ beds = [], systemInfo }) {
   return (
     <div className={`${GLASS_CARD} p-4 h-full flex flex-col`}>
       <div className="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
-        <h3 className="text-xs font-bold text-ink">SOIL MOISTURE BY BED</h3>
+        <h3 className="text-xs font-bold text-[var(--color-ink)]">SOIL MOISTURE BY BED</h3>
         {systemInfo && (
-          <span className="text-[11px] font-medium text-muted bg-card px-2.5 py-1 rounded-full whitespace-nowrap">
+          <span className="text-[11px] font-medium text-[var(--color-muted)] bg-[var(--color-surface-2)] px-2.5 py-1 rounded-full whitespace-nowrap">
             Optimal Range ({systemInfo.vwcOptimalMin}% - {systemInfo.vwcOptimalMax}%)
           </span>
         )}
@@ -61,10 +61,10 @@ export default function SoilMoistureChart({ beds = [], systemInfo }) {
           const label = STATE_LABEL[bed.state] || STATE_LABEL.optimal;
           return (
             <div key={bed.id} className="flex flex-col items-center text-center">
-              <p className="text-xs font-bold text-ink mb-1">{bed.name}</p>
+              <p className="text-xs font-bold text-[var(--color-ink)] mb-1">{bed.name}</p>
               <MoistureGauge percent={bed.vwc} color={color} label={label} />
               {systemInfo && (
-                <p className="text-[11px] text-muted mt-1">
+                <p className="text-[11px] text-[var(--color-muted)] mt-1">
                   Target: {systemInfo.vwcOptimalMin}% - {systemInfo.vwcOptimalMax}%
                 </p>
               )}

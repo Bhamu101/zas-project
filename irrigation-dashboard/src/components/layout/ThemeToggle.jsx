@@ -23,7 +23,7 @@ export default function ThemeToggle() {
   };
 
   return (
-    <div className="hidden sm:flex items-center rounded-lg border border-gray-200 p-0.5 text-xs font-semibold">
+    <div className="hidden sm:flex items-center rounded-lg border border-[var(--color-border)] p-0.5 text-xs font-semibold">
       {["light", "dark"].map((t) => (
         <button
           key={t}
@@ -31,7 +31,7 @@ export default function ThemeToggle() {
           onClick={() => apply(t)}
           aria-pressed={theme === t}
           className={`rounded-md px-2.5 py-1 capitalize transition-colors ${
-            theme === t ? "bg-brand text-[#0f0f0f]" : "text-muted hover:text-ink"
+            theme === t ? "bg-brand text-[#0f0f0f]" : "text-[var(--color-muted)] hover:text-[var(--color-ink)]"
           }`}
         >
           {t}

@@ -10,7 +10,7 @@ import { ROUTES } from "../../routes";
 import ThemeToggle from "./ThemeToggle";
 
 const alertStyles = {
-  critical: { icon: AlertOctagon, iconColor: "text-red-500", priority: 0 },
+  critical: { icon: AlertOctagon, iconColor: "text-[var(--color-danger)]", priority: 0 },
   warning: { icon: AlertTriangle, iconColor: "text-amber-500", priority: 1 },
   success: { icon: CheckCircle2, iconColor: "text-brand", priority: 2 },
   info: { icon: Info, iconColor: "text-blue-500", priority: 3 },
@@ -51,10 +51,10 @@ function WeatherChip() {
     <div className="hidden lg:flex items-center gap-2.5 pr-1 shrink-0">
       <Icon size={26} className="text-amber-500 shrink-0" />
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-ink flex items-center gap-1">
+        <p className="text-sm font-semibold text-[var(--color-ink)] flex items-center gap-1">
           <MapPin size={12} className="text-brand" /> {weather.location}
         </p>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-[var(--color-muted)]">
           {weather.temp}&deg;C &middot; {weather.condition}
         </p>
       </div>
@@ -148,17 +148,17 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
 
           {notifOpen && (
             <div className={`${SOLID_DROPDOWN} absolute right-0 top-10 w-80 p-3 z-30`}>
-              <p className="text-xs font-bold text-muted uppercase tracking-wide px-1 mb-2">Notifications</p>
+              <p className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wide px-1 mb-2">Notifications</p>
               <div className="space-y-1 max-h-72 overflow-y-auto">
                 {sortedAlerts.map((a) => {
                   const s = alertStyles[a.level] || alertStyles.info;
                   const Icon = s.icon;
                   return (
-                    <div key={a.id} className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                    <div key={a.id} className="flex items-start gap-2.5 p-2 rounded-xl hover:bg-[var(--color-surface-2)] transition-colors">
                       <Icon size={17} className={`${s.iconColor} shrink-0 mt-0.5`} strokeWidth={1.75} />
                       <div className="min-w-0">
-                        <p className="text-sm text-ink font-medium leading-snug">{a.text}</p>
-                        <p className="text-xs text-muted mt-0.5">{a.time} &middot; {a.category}</p>
+                        <p className="text-sm text-[var(--color-ink)] font-medium leading-snug">{a.text}</p>
+                        <p className="text-xs text-[var(--color-muted)] mt-0.5">{a.time} &middot; {a.category}</p>
                       </div>
                     </div>
                   );
@@ -179,37 +179,37 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
             onClick={() => { setProfileOpen((v) => !v); setNotifOpen(false); }}
             className="flex items-center gap-2 h-12 pl-3 pr-2 rounded-xl border-l border-black/10 hover:bg-black/5 active:bg-black/10 transition-colors"
           >
-            <UserCircle size={24} className="text-gray-300" strokeWidth={1.5} />
+            <UserCircle size={24} className="text-[var(--color-muted)]" strokeWidth={1.5} aria-hidden="true" />
             <div className="text-left leading-tight hidden sm:block">
-              <p className="text-xs text-ink font-bold">{CURRENT_USER.name}</p>
-              <p className="text-[11px] text-muted capitalize">{CURRENT_USER.role}</p>
+              <p className="text-xs text-[var(--color-ink)] font-bold">{CURRENT_USER.name}</p>
+              <p className="text-[11px] text-[var(--color-muted)] capitalize">{CURRENT_USER.role}</p>
             </div>
-            <ChevronDown size={13} className={`text-muted transition-transform ${profileOpen ? "rotate-180" : ""}`} />
+            <ChevronDown size={13} className={`text-[var(--color-muted)] transition-transform ${profileOpen ? "rotate-180" : ""}`} />
           </button>
 
           {profileOpen && (
             <div className={`${SOLID_DROPDOWN} absolute right-0 top-11 w-56 p-2 z-30`}>
               <button
                 onClick={() => { onNavigate?.("settings"); setProfileOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[var(--color-ink)] hover:bg-[var(--color-surface-2)] transition-colors"
               >
-                <Settings size={16} className="text-muted" />
+                <Settings size={16} className="text-[var(--color-muted)]" />
                 System Settings
               </button>
               <button
                 onClick={() => { onNavigate?.("settings"); setProfileOpen(false); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[var(--color-ink)] hover:bg-[var(--color-surface-2)] transition-colors"
               >
-                <ShieldCheck size={16} className="text-muted" />
+                <ShieldCheck size={16} className="text-[var(--color-muted)]" />
                 System Diagnostics
               </button>
-              <div className="h-px bg-gray-100 my-1" />
+              <div className="h-px bg-[var(--color-neutral-bg)] my-1" />
               {/* Previously had no onClick at all — the only way out of the app
                   did nothing. LoginGate returns to the sign-in screen once the
                   session clears. */}
               <button
                 onClick={() => { setProfileOpen(false); signOut(); }}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[var(--color-danger)] hover:bg-[var(--color-danger-bg)] transition-colors"
               >
                 <LogOut size={16} />
                 Sign Out

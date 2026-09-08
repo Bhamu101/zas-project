@@ -5,10 +5,10 @@ import {
 } from "lucide-react";
 
 const STATUS = {
-  critical: { icon: AlertOctagon, hex: "#ef4444", color: "text-red-500", badgeText: "text-red-600", label: "Critical", priority: 0 },
-  warning: { icon: AlertTriangle, hex: "#f59e0b", color: "text-amber-500", badgeText: "text-amber-700", label: "Warning", priority: 1 },
-  success: { icon: CheckCircle2, hex: "#16a34a", color: "text-brand", badgeText: "text-brand-dark", label: "Resolved", priority: 2 },
-  info: { icon: Info, hex: "#3b82f6", color: "text-blue-500", badgeText: "text-blue-700", label: "Info", priority: 3 },
+  critical: { icon: AlertOctagon, hex: "#ef4444", color: "text-[var(--color-danger)]", badgeText: "text-[var(--color-danger)]", label: "Critical", priority: 0 },
+  warning: { icon: AlertTriangle, hex: "#f59e0b", color: "text-amber-500", badgeText: "text-[var(--color-warn)]", label: "Warning", priority: 1 },
+  success: { icon: CheckCircle2, hex: "#16a34a", color: "text-brand", badgeText: "text-[var(--color-brand-text)]", label: "Resolved", priority: 2 },
+  info: { icon: Info, hex: "#3b82f6", color: "text-blue-500", badgeText: "text-[var(--color-info)]", label: "Info", priority: 3 },
 };
 
 // Mock alert times are plain strings ("10:15 AM" / "Yesterday 07:30 PM"), not
@@ -23,13 +23,13 @@ function splitTime(raw) {
 
 function StatTile({ label, sublabel, value, hex, Icon }) {
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4">
       <div className="flex items-center justify-between">
-        <p className="text-2xl font-bold text-ink">{value}</p>
+        <p className="text-2xl font-bold text-[var(--color-ink)]">{value}</p>
         <Icon size={22} style={{ color: hex }} />
       </div>
-      <p className="text-xs font-medium text-ink mt-2">{label}</p>
-      <p className="text-[11px] text-muted mt-0.5">{sublabel}</p>
+      <p className="text-xs font-medium text-[var(--color-ink)] mt-2">{label}</p>
+      <p className="text-[11px] text-[var(--color-muted)] mt-0.5">{sublabel}</p>
     </div>
   );
 }
@@ -89,21 +89,21 @@ export default function AlertsPage({ alerts = [] }) {
         ))}
       </div>
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[200px]">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted)]" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search alerts..."
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-ink)] placeholder:text-[var(--color-muted)] focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+            className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-ink)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-brand/40"
           >
             <option value="all">All Severity</option>
             {Object.entries(STATUS).map(([key, s]) => (
@@ -113,7 +113,7 @@ export default function AlertsPage({ alerts = [] }) {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+            className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-ink)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-brand/40"
           >
             <option value="all">All Categories</option>
             {categories.map((c) => (
@@ -123,21 +123,21 @@ export default function AlertsPage({ alerts = [] }) {
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+            className="px-3 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-ink)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-brand/40"
           >
             <option value="all">All Time</option>
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
           </select>
-          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand text-brand text-sm font-bold hover:bg-green-50 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand text-brand text-sm font-bold hover:bg-[var(--color-ok-bg)] transition-colors">
             <Download size={15} /> Export
           </button>
         </div>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-center py-12 text-muted">
+          <div className="flex flex-col items-center justify-center text-center py-12 text-[var(--color-muted)]">
             <Bell size={28} className="mb-2" />
             <p className="text-sm">No alerts match your filters.</p>
           </div>
@@ -145,7 +145,7 @@ export default function AlertsPage({ alerts = [] }) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr className="text-left text-xs text-muted">
+                <tr className="text-left text-xs text-[var(--color-muted)]">
                   <th className="pb-3 font-semibold">Alert</th>
                   <th className="pb-3 font-semibold">Category</th>
                   <th className="pb-3 font-semibold">Time</th>
@@ -160,25 +160,25 @@ export default function AlertsPage({ alerts = [] }) {
                   const { day, time } = splitTime(a.time);
                   const isAck = acknowledgedIds.has(a.id);
                   return (
-                    <tr key={a.id} className="[&>td]:border-b [&>td]:border-gray-100">
+                    <tr key={a.id} className="[&>td]:border-b [&>td]:border-[var(--color-border)]">
                       <td className="py-3 pr-3">
                         <div className="flex items-center gap-2.5">
                           <Icon size={16} className={`${s.color} shrink-0`} />
-                          <span className={`font-medium text-ink ${isAck ? "opacity-60" : ""}`}>{a.text}</span>
+                          <span className={`font-medium text-[var(--color-ink)] ${isAck ? "opacity-60" : ""}`}>{a.text}</span>
                         </div>
                       </td>
                       <td className="py-3 pr-3">
-                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-card text-muted whitespace-nowrap">
+                        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--color-surface-2)] text-[var(--color-muted)] whitespace-nowrap">
                           {a.category}
                         </span>
                       </td>
                       <td className="py-3 pr-3 whitespace-nowrap">
-                        <p className="text-ink">{time}</p>
-                        <p className="text-xs text-muted">{day}</p>
+                        <p className="text-[var(--color-ink)]">{time}</p>
+                        <p className="text-xs text-[var(--color-muted)]">{day}</p>
                       </td>
                       <td className="py-3 pr-3">
                         <span
-                          className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${isAck ? "bg-card text-muted" : s.badgeText}`}
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${isAck ? "bg-[var(--color-surface-2)] text-[var(--color-muted)]" : s.badgeText}`}
                           style={isAck ? undefined : { backgroundColor: `${s.hex}1a` }}
                         >
                           {isAck ? "Acknowledged" : s.label}
@@ -188,31 +188,31 @@ export default function AlertsPage({ alerts = [] }) {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setViewing(a)}
-                            className="text-xs font-bold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-green-50 transition-colors"
+                            className="text-xs font-bold text-brand border border-brand/30 rounded-lg px-3 py-1.5 hover:bg-[var(--color-ok-bg)] transition-colors"
                           >
                             View
                           </button>
                           <div className="relative" data-kebab-menu>
                             <button
                               onClick={() => setMenuOpenId((cur) => (cur === a.id ? null : a.id))}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:bg-card transition-colors"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
                               aria-label={`More actions for: ${a.text}`}
                             >
                               <MoreVertical size={16} />
                             </button>
                             {menuOpenId === a.id && (
-                              <div className="absolute right-0 top-9 z-10 bg-white border border-gray-200 shadow-lg rounded-xl p-1 w-44">
+                              <div className="absolute right-0 top-9 z-10 bg-[var(--color-surface)] border border-[var(--color-border)] shadow-lg rounded-xl p-1 w-44">
                                 {!isAck && (
                                   <button
                                     onClick={() => { acknowledge(a.id); setMenuOpenId(null); }}
-                                    className="w-full flex items-center gap-2 text-left text-xs px-3 py-2 rounded-lg hover:bg-card text-ink"
+                                    className="w-full flex items-center gap-2 text-left text-xs px-3 py-2 rounded-lg hover:bg-[var(--color-surface-2)] text-[var(--color-ink)]"
                                   >
                                     <Check size={14} className="text-brand" /> Acknowledge
                                   </button>
                                 )}
                                 <button
                                   onClick={() => dismiss(a.id)}
-                                  className="w-full flex items-center gap-2 text-left text-xs px-3 py-2 rounded-lg hover:bg-red-50 text-red-600"
+                                  className="w-full flex items-center gap-2 text-left text-xs px-3 py-2 rounded-lg hover:bg-[var(--color-danger-bg)] text-[var(--color-danger)]"
                                 >
                                   <X size={14} /> Dismiss
                                 </button>
@@ -229,7 +229,7 @@ export default function AlertsPage({ alerts = [] }) {
           </div>
         )}
 
-        <p className="text-xs text-muted mt-4">
+        <p className="text-xs text-[var(--color-muted)] mt-4">
           Showing {filtered.length} of {visible.length} alerts
         </p>
       </div>
@@ -246,33 +246,33 @@ export default function AlertsPage({ alerts = [] }) {
                 <div className="flex items-center gap-3">
                   <Icon size={24} className={`${s.color} shrink-0`} />
                   <div>
-                    <p className="text-sm font-bold text-ink">{s.label} Alert</p>
-                    <p className="text-xs text-muted">{viewing.category}</p>
+                    <p className="text-sm font-bold text-[var(--color-ink)]">{s.label} Alert</p>
+                    <p className="text-xs text-[var(--color-muted)]">{viewing.category}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setViewing(null)}
-                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg text-muted hover:bg-card transition-colors"
+                  className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-colors"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <p className="text-sm text-ink leading-relaxed mt-4">{viewing.text}</p>
-              <p className="text-xs text-muted mt-2">{day} &middot; {time}</p>
+              <p className="text-sm text-[var(--color-ink)] leading-relaxed mt-4">{viewing.text}</p>
+              <p className="text-xs text-[var(--color-muted)] mt-2">{day} &middot; {time}</p>
 
               <div className="flex items-center gap-2 mt-5">
                 {!isAck && (
                   <button
                     onClick={() => { acknowledge(viewing.id); setViewing(null); }}
-                    className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-white bg-brand hover:bg-brand-dark rounded-xl py-2.5 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-[var(--color-brand-ink)] bg-brand hover:bg-brand-strong rounded-xl py-2.5 transition-colors"
                   >
                     <Check size={16} /> Acknowledge
                   </button>
                 )}
                 <button
                   onClick={() => dismiss(viewing.id)}
-                  className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 text-sm font-bold text-[var(--color-danger)] border border-red-200 hover:bg-[var(--color-danger-bg)] rounded-xl py-2.5 transition-colors"
                 >
                   <X size={16} /> Dismiss
                 </button>

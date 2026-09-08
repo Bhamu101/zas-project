@@ -1,6 +1,6 @@
 // The one card. Every panel in the app should be built from this rather than
-// re-declaring `bg-white border border-gray-200 shadow-sm rounded-2xl` inline,
-// which is how the pages drifted apart in the first place.
+// re-declaring a surface/border/shadow/radius combination inline, which is how
+// the pages drifted apart from each other in the first place.
 //
 // Uses semantic tokens, so dark mode comes from re-pointing those tokens
 // instead of a per-class override.

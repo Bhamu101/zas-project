@@ -47,29 +47,29 @@ export default function EnergySavingsCard({ stats }) {
   const potentialSellBack = exportableKwh * feedInRate;
 
   return (
-    <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-5">
-      <h2 className="text-sm font-bold text-ink mb-4">ENERGY SAVINGS &amp; GRID SELL-BACK</h2>
+    <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-5">
+      <h2 className="text-sm font-bold text-[var(--color-ink)] mb-4">ENERGY SAVINGS &amp; GRID SELL-BACK</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <div className="rounded-xl p-4" style={{ backgroundColor: "#15803d0d", border: "1px solid #15803d33" }}>
-          <span className="block text-[10px] font-bold text-muted uppercase tracking-wide mb-1">Saved today (self-used solar system)</span>
-          <p className="text-2xl font-bold text-brand-dark">${moneySaved.toFixed(2)}</p>
-          <p className="text-[11px] text-muted mt-1">
+          <span className="block text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-wide mb-1">Saved today (self-used solar system)</span>
+          <p className="text-2xl font-bold text-[var(--color-brand-text)]">${moneySaved.toFixed(2)}</p>
+          <p className="text-[11px] text-[var(--color-muted)] mt-1">
             {selfConsumedKwh.toFixed(2)} kWh not bought from the grid, at ${gridRate.toFixed(2)}/kWh
           </p>
         </div>
 
         <div className="rounded-xl p-4" style={{ backgroundColor: "#3b82f60d", border: "1px solid #3b82f633" }}>
-          <span className="block text-[10px] font-bold text-muted uppercase tracking-wide mb-1">If sold to the national grid</span>
+          <span className="block text-[10px] font-bold text-[var(--color-muted)] uppercase tracking-wide mb-1">If sold to the national grid</span>
           <p className="text-2xl font-bold text-blue-600">${potentialSellBack.toFixed(2)}</p>
-          <p className="text-[11px] text-muted mt-1">
+          <p className="text-[11px] text-[var(--color-muted)] mt-1">
             {exportableKwh.toFixed(2)} kWh surplus solar system output, at ${feedInRate.toFixed(2)}/kWh feed-in rate
           </p>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-4 mb-3">
-        <label className="flex items-center gap-2 text-xs text-muted">
+        <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
           Grid rate ($/kWh)
           <input
             type="number"
@@ -77,10 +77,10 @@ export default function EnergySavingsCard({ stats }) {
             step="0.01"
             value={gridRate}
             onChange={(e) => setGridRate(Math.max(0, Number(e.target.value)))}
-            className="w-20 px-2 py-1 rounded-lg border border-gray-200 text-xs text-ink font-semibold"
+            className="w-20 px-2 py-1 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-ink)] font-semibold"
           />
         </label>
-        <label className="flex items-center gap-2 text-xs text-muted">
+        <label className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
           Feed-in rate ($/kWh)
           <input
             type="number"
@@ -88,12 +88,12 @@ export default function EnergySavingsCard({ stats }) {
             step="0.01"
             value={feedInRate}
             onChange={(e) => setFeedInRate(Math.max(0, Number(e.target.value)))}
-            className="w-20 px-2 py-1 rounded-lg border border-gray-200 text-xs text-ink font-semibold"
+            className="w-20 px-2 py-1 rounded-lg border border-[var(--color-border)] text-xs text-[var(--color-ink)] font-semibold"
           />
         </label>
       </div>
 
-      <p className="text-[11px] text-muted">
+      <p className="text-[11px] text-[var(--color-muted)]">
         Based on today&rsquo;s {solarKwh.toFixed(2)} kWh solar system generation and {selfConsumptionPct}% self-consumption.
         Rates are editable estimates &mdash; actual sell-back depends on having a feed-in/net-metering
         arrangement with your utility.

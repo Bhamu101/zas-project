@@ -34,8 +34,8 @@ const SIM_TARGET_GAIN = 24;       // total % the bed climbs once triggered
 const STATE_LABEL = { optimal: "Optimal", "needs-water": "Needs Water", critical: "Critical" };
 
 const stateStyles = {
-  critical: { badgeText: "text-red-600", bar: "bg-red-500" },
-  "needs-water": { badgeText: "text-amber-600", bar: "bg-amber-500" },
+  critical: { badgeText: "text-[var(--color-danger)]", bar: "bg-red-500" },
+  "needs-water": { badgeText: "text-[var(--color-warn)]", bar: "bg-amber-500" },
   optimal: { badgeText: "text-brand", bar: "bg-brand" },
 };
 
@@ -43,7 +43,7 @@ function DeltaTag({ value, goodDirection = "down" }) {
   const isDown = value < 0;
   const isGood = goodDirection === "down" ? isDown : !isDown;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${isGood ? "text-brand" : "text-red-500"}`}>
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${isGood ? "text-brand" : "text-[var(--color-danger)]"}`}>
       {value < 0 ? "−" : "+"}{Math.abs(value)}% vs yesterday
     </span>
   );
@@ -154,16 +154,16 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
 
   return (
     <div className="space-y-3">
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <h2 className="text-sm font-bold text-ink">SYSTEM MODE</h2>
-          <Info size={13} className="text-muted" />
+          <h2 className="text-sm font-bold text-[var(--color-ink)]">SYSTEM MODE</h2>
+          <Info size={13} className="text-[var(--color-muted)]" />
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setMode("automatic")}
             className={`px-5 py-2.5 rounded-full text-sm font-bold transition-colors ${
-              mode === "automatic" ? "bg-brand text-white" : "bg-card text-muted"
+              mode === "automatic" ? "bg-brand text-[var(--color-brand-ink)]" : "bg-[var(--color-surface-2)] text-[var(--color-muted)]"
             }`}
           >
             Automatic
@@ -171,7 +171,7 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
           <button
             onClick={() => setMode("manual")}
             className={`px-5 py-2.5 rounded-full text-sm font-bold border transition-colors ${
-              mode === "manual" ? "bg-ink text-white border-ink" : "bg-white text-muted border-gray-200"
+              mode === "manual" ? "bg-ink text-white border-ink" : "bg-[var(--color-surface)] text-[var(--color-muted)] border-[var(--color-border)]"
             }`}
           >
             Manual
@@ -180,7 +180,7 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
       </div>
 
       {triggerError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-xl px-4 py-3">
+        <div className="bg-[var(--color-danger-bg)] border border-red-200 text-[var(--color-danger)] text-xs font-medium rounded-xl px-4 py-3">
           Could not start irrigation — {triggerError}
         </div>
       )}
@@ -194,49 +194,49 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
           const t = bedTargets(bed, systemInfo);
           const s = stateStyles[state] || stateStyles.optimal;
           return (
-            <div key={bed.id} className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
+            <div key={bed.id} className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-bold text-ink whitespace-nowrap">
+                <h3 className="text-lg font-bold text-[var(--color-ink)] whitespace-nowrap">
                   {bed.name}{t.crop ? `: ${t.crop}` : ""}
                 </h3>
                 <div className="flex items-center gap-1">
                   <span className={`text-sm font-bold whitespace-nowrap ${s.badgeText}`}>
                     {STATE_LABEL[state] || STATE_LABEL.optimal}
                   </span>
-                  <button className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:bg-card transition-colors">
+                  <button className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-surface-2)] transition-colors">
                     <MoreVertical size={15} />
                   </button>
                 </div>
               </div>
 
-              <p className="text-3xl font-bold text-ink tabular-nums mb-1">{Math.round(vwc)}%</p>
-              <p className="text-xs text-muted mb-2">
+              <p className="text-3xl font-bold text-[var(--color-ink)] tabular-nums mb-1">{Math.round(vwc)}%</p>
+              <p className="text-xs text-[var(--color-muted)] mb-2">
                 Soil Moisture{running && <span className="text-brand font-semibold"> · irrigating…</span>}
               </p>
 
               <ProgressBar percent={vwc} color={s.bar} />
 
-              <div className="flex items-center gap-1 text-xs text-muted mt-2 mb-4">
+              <div className="flex items-center gap-1 text-xs text-[var(--color-muted)] mt-2 mb-4">
                 <ChevronRight size={12} />
                 <span>
                   {t.crop ? `${t.crop} target: ` : "Target range: "}
                   {t.vwcOptimalMin}% - {t.vwcOptimalMax}%
-                  <span className="text-muted/70"> · trigger &lt; {t.vwcTrigger}%</span>
+                  <span className="text-[var(--color-muted)]"> · trigger &lt; {t.vwcTrigger}%</span>
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 mb-4 pt-3 border-t border-gray-100">
+              <div className="grid grid-cols-3 gap-2 mb-4 pt-3 border-t border-[var(--color-border)]">
                 <div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted mb-1"><Calendar size={11} /> Last Irrigation</div>
-                  <p className="text-xs font-semibold text-ink min-h-[2rem] leading-4">{bed.lastIrrigation}</p>
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--color-muted)] mb-1"><Calendar size={11} /> Last Irrigation</div>
+                  <p className="text-xs font-semibold text-[var(--color-ink)] min-h-[2rem] leading-4">{bed.lastIrrigation}</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted mb-1"><Clock size={11} /> Duration</div>
-                  <p className="text-xs font-semibold text-ink min-h-[2rem] leading-4">{bed.durationMin} min</p>
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--color-muted)] mb-1"><Clock size={11} /> Duration</div>
+                  <p className="text-xs font-semibold text-[var(--color-ink)] min-h-[2rem] leading-4">{bed.durationMin} min</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-1 text-[10px] text-muted mb-1"><Droplets size={11} /> Water Used</div>
-                  <p className="text-xs font-semibold text-ink min-h-[2rem] leading-4">{bed.waterUsedL.toLocaleString()} L</p>
+                  <div className="flex items-center gap-1 text-[10px] text-[var(--color-muted)] mb-1"><Droplets size={11} /> Water Used</div>
+                  <p className="text-xs font-semibold text-[var(--color-ink)] min-h-[2rem] leading-4">{bed.waterUsedL.toLocaleString()} L</p>
                 </div>
               </div>
 
@@ -245,8 +245,8 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
                 disabled={mode === "automatic" || running || !!pending[bed.id]}
                 className={`mt-auto w-full flex items-center justify-center gap-2 text-sm font-bold rounded-xl py-3 transition-colors ${
                   mode === "automatic" || running || pending[bed.id]
-                    ? "bg-card text-muted cursor-not-allowed"
-                    : "bg-brand text-white hover:bg-brand-dark"
+                    ? "bg-[var(--color-surface-2)] text-[var(--color-muted)] cursor-not-allowed"
+                    : "bg-brand text-[var(--color-brand-ink)] hover:bg-brand-strong"
                 }`}
               >
                 {pending[bed.id] ? (
@@ -271,15 +271,15 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
         })}
       </div>
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col">
-        <h3 className="text-xs font-bold text-ink mb-3 shrink-0">IRRIGATION OVERVIEW</h3>
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex flex-col">
+        <h3 className="text-xs font-bold text-[var(--color-ink)] mb-3 shrink-0">IRRIGATION OVERVIEW</h3>
 
         {overviewTiles && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 shrink-0">
             {overviewTiles.map((t) => (
-              <div key={t.label} className="bg-card rounded-xl p-3">
-                <p className="text-lg font-bold text-ink leading-none">{t.value}</p>
-                <p className="text-[11px] text-muted mt-1">{t.label}</p>
+              <div key={t.label} className="bg-[var(--color-surface-2)] rounded-xl p-3">
+                <p className="text-lg font-bold text-[var(--color-ink)] leading-none">{t.value}</p>
+                <p className="text-[11px] text-[var(--color-muted)] mt-1">{t.label}</p>
                 <div className="mt-1"><DeltaTag value={t.delta} goodDirection={t.goodDirection} /></div>
               </div>
             ))}

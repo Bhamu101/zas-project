@@ -25,19 +25,19 @@ export default function AerialView() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm p-6">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <Satellite size={26} className="text-brand shrink-0" />
             <div>
-              <h2 className="text-base font-bold text-ink">Aerial Farm View</h2>
-              <p className="text-xs text-muted">
+              <h2 className="text-base font-bold text-[var(--color-ink)]">Aerial Farm View</h2>
+              <p className="text-xs text-[var(--color-muted)]">
                 Satellite / aerial imagery centered on the farm &mdash; 17&deg;49'47.9"S 31&deg;01'39.8"E
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted bg-card px-3 py-2 rounded-xl">
+          <div className="flex items-center gap-2 text-xs text-[var(--color-muted)] bg-[var(--color-surface-2)] px-3 py-2 rounded-xl">
             <Ruler size={14} className="text-brand shrink-0" />
             <span>Boundary radius</span>
             <input
@@ -49,12 +49,12 @@ export default function AerialView() {
               onChange={(e) => setRadiusM(Number(e.target.value))}
               className="accent-brand"
             />
-            <span className="font-semibold text-ink w-12 text-right">{radiusM} m</span>
+            <span className="font-semibold text-[var(--color-ink)] w-12 text-right">{radiusM} m</span>
           </div>
         </div>
       </div>
 
-      <div className="bg-surface rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl border border-[var(--color-border)] shadow-sm overflow-hidden">
         <MapContainer
           center={FARM_CENTER}
           zoom={17}

@@ -42,17 +42,6 @@
   --color-brand-text: #4d7c0f;
   --color-brand-subtle: #f2ffd6;
 
-  /* DEPRECATED aliases. The pages not yet redesigned still use bg-brand-dark /
-     bg-card / bg-lime; dropping these would silently emit no colour at all
-     rather than failing loudly. Remove each one as its last call site migrates.
-     `card` is re-pointed to the neutral subtle surface so those pages also pick
-     up correct dark-mode behaviour in the meantime. */
-  --color-brand-dark: #a3e635;
-  --color-lime: #c7ff2e;
-  --color-card: #f1f5f9;
-  --color-graphite: #2e2e2e;
-  --color-steel: #808080;
-
   /* ---- Neutral surfaces (Data-Dense Dashboard: neutral base, data colour) */
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;
@@ -118,7 +107,6 @@
 
   --color-brand-text: #bef264;
   --color-brand-subtle: #1f2c12;
-  --color-card: #1a2438;
 
   --color-ok: #4ade80;
   --color-ok-bg: rgba(34, 197, 94, 0.16);
@@ -181,109 +169,10 @@ body {
   color: var(--color-brand-ink);
 }
 
-/* Raw lime fails contrast as text on white, so these utilities resolve to the
+/* Raw lime fails contrast as text on white, so this utility resolves to the
    deepened variant instead. */
-.text-brand,
-.text-brand-dark {
+.text-brand {
   color: var(--color-brand-text);
-}
-
-/* ---- Dark-mode remaps for hard-coded utility classes -------------------
-   TRANSITIONAL — delete as pages migrate to the tokens above.
-
-   The pages not yet redesigned still write literal `bg-white`, `text-gray-600`
-   etc., which have no dark variant of their own. These remaps keep dark mode
-   working on those pages. Every page moved onto the semantic tokens
-   (--color-surface, --color-ink, --color-border, …) stops depending on this
-   block; once no page does, the whole section goes.
-
-   Do NOT add to this list. New work uses the tokens. */
-[data-theme="dark"] .bg-white {
-  background-color: var(--color-surface);
-}
-[data-theme="dark"] .bg-gray-50,
-[data-theme="dark"] .bg-gray-50\/60,
-[data-theme="dark"] .bg-gray-50\/50 {
-  background-color: #202020;
-}
-[data-theme="dark"] .bg-gray-100 {
-  background-color: #262626;
-}
-[data-theme="dark"] .bg-gray-200 {
-  background-color: #2a2a2a;
-}
-[data-theme="dark"] .bg-gray-300 {
-  background-color: #3f3f46;
-}
-[data-theme="dark"] .bg-gray-400 {
-  background-color: #52525b;
-}
-
-[data-theme="dark"] .text-gray-400 {
-  color: #71717a;
-}
-[data-theme="dark"] .text-gray-500 {
-  color: #9ca3af;
-}
-[data-theme="dark"] .text-gray-600 {
-  color: #cbd5e1;
-}
-[data-theme="dark"] .text-gray-700 {
-  color: #e5e7eb;
-}
-[data-theme="dark"] .text-gray-300 {
-  color: #d4d4d8;
-}
-
-[data-theme="dark"] .border-gray-100 {
-  border-color: #262626;
-}
-[data-theme="dark"] .border-gray-200 {
-  border-color: #333333;
-}
-[data-theme="dark"] .border-gray-300 {
-  border-color: #404040;
-}
-[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
-  border-color: #262626;
-}
-
-/* Light status tints → translucent on dark */
-[data-theme="dark"] .bg-red-50,
-[data-theme="dark"] .bg-red-50\/50,
-[data-theme="dark"] .bg-red-100 {
-  background-color: rgba(239, 68, 68, 0.14);
-}
-[data-theme="dark"] .bg-amber-50 {
-  background-color: rgba(245, 158, 11, 0.14);
-}
-[data-theme="dark"] .bg-green-50 {
-  background-color: rgba(163, 230, 53, 0.12);
-}
-[data-theme="dark"] .bg-blue-50 {
-  background-color: rgba(59, 130, 246, 0.14);
-}
-
-/* Deep status text → lighter on dark */
-[data-theme="dark"] .text-red-600,
-[data-theme="dark"] .text-red-700 {
-  color: #f87171;
-}
-[data-theme="dark"] .text-amber-700 {
-  color: #fbbf24;
-}
-[data-theme="dark"] .text-blue-700 {
-  color: #60a5fa;
-}
-
-/* Black overlays used for hover feedback on light */
-[data-theme="dark"] .hover\:bg-black\/5:hover,
-[data-theme="dark"] .bg-black\/5 {
-  background-color: rgba(255, 255, 255, 0.06);
-}
-[data-theme="dark"] .active\:bg-black\/10:active,
-[data-theme="dark"] .bg-black\/10 {
-  background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Recharts axes / gridlines are inline-styled for light — nudge for dark */

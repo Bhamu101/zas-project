@@ -46,7 +46,7 @@ export default function Dashboard({ data, onNavigate }) {
           label="Water saved"
           value={`${(extendedStats?.totalWaterSavedL ?? 0).toLocaleString()} L`}
           sublabel={extendedStats?.totalWaterSavedPeriod ?? ""}
-          valueColor="text-green-700"
+          valueColor="text-[var(--color-ok)]"
         >
           <Sparkline data={sparkline?.irrigation ?? []} color="#16a34a" />
         </StatCard>
@@ -63,7 +63,7 @@ export default function Dashboard({ data, onNavigate }) {
           label="Crop health"
           value={`${extendedStats?.cropHealthScorePct ?? 0}%`}
           sublabel={extendedStats?.cropHealthLabel ?? ""}
-          valueColor="text-green-700"
+          valueColor="text-[var(--color-ok)]"
         >
           <Sparkline data={sparkline?.energy ?? []} color="#16a34a" />
         </StatCard>
