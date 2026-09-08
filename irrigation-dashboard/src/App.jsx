@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
@@ -15,6 +16,7 @@ import AlertsPage from "./pages/AlertsPage";
 import SystemSettings from "./pages/SystemSettings";
 import { useDashboardData } from "./hooks/useDashboardData";
 import { getApiRoot } from "./lib/apiClient";
+import { ROUTES, idForPath, pathForId } from "./routes";
 
 // App shell.
 //
@@ -22,6 +24,12 @@ import { getApiRoot } from "./lib/apiClient";
 // below lg the sidebar becomes an overlay drawer so it doesn't consume the
 // viewport. The drawer closes on Escape and on backdrop click, which the
 // previous always-visible sidebar had no need for and therefore lacked.
+//
+// Navigation is URL-backed (see routes.js). Pages were previously swapped with
+// a useState, so there were no addresses to bookmark or share, the browser back
+// button did nothing, and a refresh always dumped you on the Dashboard.
+// Sidebar/TopBar keep their existing activePage + onNavigate(id) contract —
+// `navigate` is just wired in behind it.
 
 function LoadingScreen() {
   return (
@@ -41,7 +49,11 @@ function LoadingScreen() {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState("dashboard");
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const activePage = idForPath(pathname);
+  const setActivePage = (id) => navigate(pathForId(id));
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data, error, loading, refetch } = useDashboardData();
@@ -71,40 +83,38 @@ function App() {
     );
   }
 
-  function renderPage() {
-    switch (activePage) {
-      case "dashboard": return <Dashboard data={data} onNavigate={setActivePage} />;
-      case "ai-assistant": return <AIAssistant />;
-      case "irrigation": return (
-        <IrrigationControl
-          beds={data.beds}
-          systemInfo={data.systemInfo}
-          irrigationOverview={data.irrigationOverview}
-        />
-      );
-      case "energy": return (
-        <EnergyManagement
-          kpis={data.kpis}
-          energyOverview={data.energyOverview}
-          onNavigate={setActivePage}
-        />
-      );
-      case "beds": return (
-        <BedMonitoring
-          beds={data.beds}
-          systemInfo={data.systemInfo}
-          bedActivity={data.bedActivity}
-          onNavigate={setActivePage}
-        />
-      );
-      case "crop-health": return <CropHealth />;
-      case "aerial-view": return <AerialView />;
-      case "reports": return <DataReports seasonSummary={data.seasonSummary} dataReports={data.dataReports} />;
-      case "alerts": return <AlertsPage alerts={data.alerts} />;
-      case "settings": return <SystemSettings dashboard={data} />;
-      default: return <Dashboard data={data} onNavigate={setActivePage} />;
-    }
-  }
+  // One element per route. Kept in the same order as routes.js.
+  const pageFor = {
+    "dashboard": <Dashboard data={data} onNavigate={setActivePage} />,
+    "ai-assistant": <AIAssistant />,
+    "crop-health": <CropHealth />,
+    "irrigation": (
+      <IrrigationControl
+        beds={data.beds}
+        systemInfo={data.systemInfo}
+        irrigationOverview={data.irrigationOverview}
+      />
+    ),
+    "energy": (
+      <EnergyManagement
+        kpis={data.kpis}
+        energyOverview={data.energyOverview}
+        onNavigate={setActivePage}
+      />
+    ),
+    "beds": (
+      <BedMonitoring
+        beds={data.beds}
+        systemInfo={data.systemInfo}
+        bedActivity={data.bedActivity}
+        onNavigate={setActivePage}
+      />
+    ),
+    "aerial-view": <AerialView />,
+    "reports": <DataReports seasonSummary={data.seasonSummary} dataReports={data.dataReports} />,
+    "alerts": <AlertsPage alerts={data.alerts} />,
+    "settings": <SystemSettings dashboard={data} />,
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-bg)] font-display text-[var(--color-ink)]">
@@ -142,7 +152,15 @@ function App() {
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           onOpenDrawer={() => setDrawerOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-5">{renderPage()}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <Routes>
+            {ROUTES.map((r) => (
+              <Route key={r.id} path={r.path} element={pageFor[r.id]} />
+            ))}
+            {/* Unknown URL returns to the dashboard rather than a blank screen. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
       </div>
     </div>
   );

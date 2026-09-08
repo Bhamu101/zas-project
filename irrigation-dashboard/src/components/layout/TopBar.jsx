@@ -6,6 +6,7 @@ import {
 import { SOLID_DROPDOWN } from "../../lib/glass";
 import { useLiveWeather } from "../../hooks/useLiveWeather";
 import { CURRENT_USER, signOut } from "../../lib/currentUser";
+import { ROUTES } from "../../routes";
 import ThemeToggle from "./ThemeToggle";
 
 const alertStyles = {
@@ -24,18 +25,11 @@ const weatherIconMap = {
   storm: CloudLightning,
 };
 
-const PAGE_META = {
-  // Name comes from the signed-in session rather than being hardcoded.
-  dashboard: { subtitle: "Here is what has been happening on your farm today." },
-  "ai-assistant": { title: "Goho AI" },
-  irrigation: { title: "Irrigation Control" },
-  energy: { title: "Energy Management" },
-  beds: { title: "Bed Monitoring" },
-  "crop-health": { title: "Crop Health (AI)" },
-  "aerial-view": { title: "Aerial View" },
-  reports: { title: "Data & Reports" },
-  alerts: { title: "Alerts & Notifications" },
-  settings: { title: "System Settings" },
+// Titles come from the route table so they can't drift out of sync with the
+// URLs; only the dashboard's greeting and subtitle are special-cased here.
+const TITLES = Object.fromEntries(ROUTES.map((r) => [r.id, r.title]));
+const SUBTITLES = {
+  dashboard: "Here is what has been happening on your farm today.",
 };
 
 function useClickOutside(ref, onOutside) {
@@ -86,11 +80,11 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
   const dateStr = now.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
   const timeStr = now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: true });
 
-  const pageMeta = PAGE_META[activePage] || PAGE_META.dashboard;
+  const subtitle = SUBTITLES[activePage];
   const pageTitle =
     activePage === "dashboard"
       ? `Welcome back, ${CURRENT_USER.name} \u{1F44B}`
-      : pageMeta.title;
+      : (TITLES[activePage] ?? "Dashboard");
 
   const sortedAlerts = [...alerts].sort(
     (a, b) => (alertStyles[a.level]?.priority ?? 9) - (alertStyles[b.level]?.priority ?? 9)
@@ -120,9 +114,9 @@ export default function TopBar({ activePage = "dashboard", alerts = [], onNaviga
           <h1 className="truncate text-base font-semibold leading-tight text-[var(--color-ink)] sm:text-lg">
             {pageTitle}
           </h1>
-          {pageMeta.subtitle && (
+          {subtitle && (
             <p className="hidden truncate text-xs text-[var(--color-muted)] sm:block">
-              {pageMeta.subtitle}
+              {subtitle}
             </p>
           )}
         </div>
