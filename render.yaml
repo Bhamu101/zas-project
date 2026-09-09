@@ -27,3 +27,10 @@ services:
         sync: false
       - key: TWILIO_WHATSAPP_TO
         sync: false
+      # Bed 1's ESP32 lives on the farm's local WiFi, not the public internet —
+      # this deployed backend can't reach a LAN IP directly. Point this at a
+      # persistent public tunnel to the ESP32 instead (see CHANGED_FILES.txt /
+      # PROJECT_CONTEXT.md for the ngrok reserved-domain setup). Leave unset to
+      # keep Bed 1 simulated like the other beds until that tunnel is running.
+      - key: ESP32_BASE_URL
+        sync: false
