@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, ReferenceArea } from "recharts";
 import { bedTargets } from "../lib/cropTargets";
+import BedCamera from "../components/dashboard/BedCamera";
 
 const STATE_STYLE = {
   critical: {
@@ -308,7 +309,14 @@ export default function BedMonitoring({ beds = [], systemInfo, bedActivity = [],
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
-        <MoistureTrendChart beds={beds} systemInfo={systemInfo} />
+        <BedCamera bedId={1} bedName="Bed 1" />
+        {/* grid, not flex: lets the chart card stretch to the camera's height */}
+        <div className="lg:col-span-2 grid">
+          <MoistureTrendChart beds={beds} systemInfo={systemInfo} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
         <RecommendedActions beds={beds} systemInfo={systemInfo} onNavigate={onNavigate} />
         <RecentActivity items={bedActivity} onNavigate={onNavigate} />
       </div>

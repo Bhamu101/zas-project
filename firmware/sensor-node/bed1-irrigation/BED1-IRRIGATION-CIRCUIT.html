@@ -1,0 +1,420 @@
+<title>Bed 1 Irrigation Circuit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --ink: #1c1c1c;
+    --muted: #5c5c58;
+    --line: #d9d8d2;
+    --accent: #4d7c0f;
+    --accent-soft: #eef4e3;
+    --pwr: #b42318;
+    --sig: #1d4ed8;
+    --warn-bg: #fff4ea;
+    --warn-ink: #9a3412;
+    --warn-line: #e3a67a;
+    --code-bg: #eeede8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181a;
+      --surface: #1f2224;
+      --ink: #e8e7e1;
+      --muted: #a3a39c;
+      --line: #34383b;
+      --accent: #9ccc3c;
+      --accent-soft: #24301a;
+      --pwr: #f97066;
+      --sig: #7aa2ff;
+      --warn-bg: #3a2416;
+      --warn-ink: #f5a35c;
+      --warn-line: #7a4a2a;
+      --code-bg: #2a2d30;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181a;
+    --surface: #1f2224;
+    --ink: #e8e7e1;
+    --muted: #a3a39c;
+    --line: #34383b;
+    --accent: #9ccc3c;
+    --accent-soft: #24301a;
+    --pwr: #f97066;
+    --sig: #7aa2ff;
+    --warn-bg: #3a2416;
+    --warn-ink: #f5a35c;
+    --warn-line: #7a4a2a;
+    --code-bg: #2a2d30;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding-inline: 20px;
+    padding-block: 36px 60px;
+  }
+  main { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+
+  h1 { font-size: 25px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 17px; font-weight: 600; margin: 0 0 10px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+  .lede { color: var(--muted); max-width: 66ch; margin: 0; }
+  .eyebrow {
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin: 0 0 6px;
+  }
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 12.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+
+  .stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 720px) { .stages { grid-template-columns: 1fr; } }
+  .st {
+    border: 1.5px solid var(--line); background: var(--surface);
+    border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 3px;
+  }
+  .st.now { border-color: var(--accent); border-width: 2px; background: var(--accent-soft); }
+  .st .n { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .st.now .n { color: var(--accent); }
+  .st .h { font-weight: 600; font-size: 13.5px; }
+  .st .d { font-size: 12px; color: var(--muted); }
+  .st .hw { font-size: 11.5px; margin-top: 4px; font-family: "IBM Plex Mono", monospace; color: var(--muted); }
+
+  figure { margin: 0; }
+  figure svg { display: block; width: 100%; height: auto; }
+  .fig-wrap { overflow-x: auto; background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 14px; }
+  .fig-wrap svg { min-width: 660px; }
+  figcaption { color: var(--muted); font-size: 12.5px; margin-top: 8px; max-width: 72ch; }
+
+  .w { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .w-pwr { stroke: var(--pwr); stroke-width: 2.2; }
+  .w-3v3 { stroke: var(--accent); }
+  .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  .box-load { fill: var(--warn-bg); stroke: var(--warn-ink); stroke-width: 1.5; }
+  .box-inner { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 3; }
+  .box-later { fill: none; stroke: var(--muted); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  .part { fill: var(--surface); stroke: currentColor; stroke-width: 1.6; }
+  .node { fill: currentColor; }
+  .node-pwr { fill: var(--pwr); }
+  .t { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; fill: currentColor; }
+  .t-b { font-weight: 600; }
+  .t-m { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; fill: currentColor; }
+  .t-muted { fill: var(--muted); }
+  .t-pwr { fill: var(--pwr); }
+  .t-acc { fill: var(--accent); }
+  .t-warn { fill: var(--warn-ink); }
+  .arrow { fill: currentColor; }
+
+  .warn {
+    background: var(--warn-bg); border: 1.5px solid var(--warn-line); color: var(--warn-ink);
+    border-radius: 8px; padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .warn strong { display: block; margin-bottom: 2px; }
+  .warn p { margin: 0 0 6px; color: var(--ink); }
+  .warn p:last-child { margin-bottom: 0; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .tbl-wrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  td:first-child { white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  .tbl-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 9px; }
+  ol.steps li::marker { color: var(--accent); font-weight: 600; }
+  ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .parts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 18px; }
+  .parts li { display: flex; gap: 8px; align-items: baseline; }
+  .parts .ref { flex: none; min-width: 26px; color: var(--accent); font-weight: 500; }
+  .parts .qty { color: var(--muted); }
+
+  .pill { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-radius: 4px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
+  .later-sec { border-left: 3px solid var(--line); padding-left: 18px; }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">ZAS 2026 · Smart irrigation · Bed 1</p>
+    <h1>Bed 1 — Irrigation Circuit, Built in Three Stages</h1>
+    <p class="lede">
+      Three objectives, but only <strong>one change of wiring</strong>. Stage 1 gets the pump running
+      from the app. Stage 2 adds the probe. Stage 3 adds nothing physical at all — the automatic loop
+      is already in the firmware, waiting on a flag.
+    </p>
+  </header>
+
+  <section class="stages">
+    <div class="st now">
+      <span class="n">Stage 1 · now</span>
+      <span class="h">Manual irrigation</span>
+      <span class="d">Tap Start in the app, the pump runs for the requested time and stops.</span>
+      <span class="hw">wire: ESP32 · K1 · R385</span>
+    </div>
+    <div class="st">
+      <span class="n">Stage 2 · next</span>
+      <span class="h">Moisture on the dashboard</span>
+      <span class="d">The probe reports VWC %, the dashboard shows Bed 1's real reading.</span>
+      <span class="hw">wire: + soil probe</span>
+    </div>
+    <div class="st">
+      <span class="n">Stage 3 · last</span>
+      <span class="h">Automatic irrigation</span>
+      <span class="d">Below 32 % VWC the node waters itself, stopping at 48 %.</span>
+      <span class="hw">wire: nothing — one flag</span>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Figure 1 · Stage 1</p>
+    <h2>Wiring — what you build today</h2>
+    <figure>
+      <div class="fig-wrap">
+        <svg viewBox="0 0 960 500" role="img" aria-label="Stage one schematic: the ESP32 is powered by USB; its GPIO18 drives relay channel one on an opto-isolated module; a fused 12 volt adapter with a reservoir capacitor feeds the relay's common terminal, and the normally-open terminal feeds the R385 pump, whose return goes to a shared ground rail.">
+          <!-- ===== 12 V adapter + rail ===== -->
+          <rect x="30" y="20" width="120" height="62" rx="6" class="box"></rect>
+          <text x="90" y="42" class="t t-b" text-anchor="middle">12 V adapter</text>
+          <text x="90" y="58" class="t t-muted" text-anchor="middle" font-size="11">2 A · pump only</text>
+          <text x="90" y="72" class="t t-muted" text-anchor="middle" font-size="11">not the ESP32</text>
+
+          <line x1="150" y1="50" x2="920" y2="50" class="w w-pwr"></line>
+          <rect x="196" y="41" width="62" height="18" rx="3" class="part"></rect>
+          <text x="227" y="34" class="t-m t-pwr" text-anchor="middle">F1 3 A slow-blow</text>
+          <text x="400" y="34" class="t-m t-pwr">+12 V bus · 18 AWG</text>
+
+          <!-- ground rail -->
+          <polyline class="w" points="40,82 40,460 920,460"></polyline>
+          <text x="330" y="482" class="t-m t-muted">common ground — adapter −, ESP32 GND, relay GND, pump −</text>
+          <line x1="500" y1="460" x2="500" y2="470" class="w"></line>
+          <line x1="488" y1="470" x2="512" y2="470" class="w"></line>
+          <line x1="492" y1="476" x2="508" y2="476" class="w"></line>
+          <line x1="496" y1="482" x2="504" y2="482" class="w"></line>
+
+          <!-- ===== USB ===== -->
+          <rect x="60" y="120" width="150" height="54" rx="6" class="box"></rect>
+          <text x="135" y="143" class="t t-b" text-anchor="middle">USB 5 V</text>
+          <text x="135" y="161" class="t t-muted" text-anchor="middle" font-size="11">laptop or power bank</text>
+          <line x1="110" y1="174" x2="110" y2="210" class="w w-3v3"></line>
+          <text x="118" y="196" class="t-m t-acc">USB port</text>
+
+          <!-- ===== ESP32 ===== -->
+          <rect x="60" y="210" width="190" height="190" rx="7" class="box"></rect>
+          <text x="155" y="238" class="t t-b" text-anchor="middle">ESP32 DevKit</text>
+          <text x="155" y="254" class="t t-muted" text-anchor="middle" font-size="11">WiFi · HTTP API</text>
+          <text x="242" y="286" class="t-m" text-anchor="end">5V</text>
+          <text x="242" y="326" class="t-m" text-anchor="end">GPIO18</text>
+          <text x="204" y="416" class="t-m" text-anchor="middle">GND</text>
+          <text x="152" y="378" class="t-m t-muted" text-anchor="middle" font-size="10">GPIO34 unused</text>
+          <text x="152" y="390" class="t-m t-muted" text-anchor="middle" font-size="10">until stage 2</text>
+          <line x1="204" y1="400" x2="204" y2="460" class="w"></line>
+
+          <!-- ESP32 -> module -->
+          <line x1="250" y1="286" x2="350" y2="286" class="w"></line>
+          <line x1="250" y1="326" x2="350" y2="326" class="w"></line>
+          <text x="262" y="280" class="t-m t-muted">5 V logic</text>
+          <text x="262" y="344" class="t-m t-muted">LOW = pump ON</text>
+
+          <!-- ===== Relay module ===== -->
+          <rect x="352" y="240" width="258" height="170" rx="7" class="box"></rect>
+          <text x="481" y="264" class="t t-b" text-anchor="middle">2-channel relay module</text>
+          <text x="481" y="279" class="t t-muted" text-anchor="middle" font-size="11">opto-isolated · ACTIVE-LOW</text>
+          <rect x="372" y="292" width="150" height="42" rx="5" class="box-inner"></rect>
+          <text x="447" y="309" class="t t-b t-acc" text-anchor="middle" font-size="11">K1 — PUMP</text>
+          <text x="447" y="325" class="t t-muted" text-anchor="middle" font-size="10.5">LOW on IN1 closes it</text>
+          <rect x="372" y="348" width="150" height="38" rx="5" class="box-later"></rect>
+          <text x="447" y="372" class="t t-muted" text-anchor="middle" font-size="10.5">K2 — spare (valve, later)</text>
+          <text x="360" y="290" class="t-m">VCC</text>
+          <text x="360" y="330" class="t-m">IN1</text>
+          <text x="360" y="400" class="t-m t-muted">GND</text>
+          <polyline class="w" points="350,396 300,396 300,460"></polyline>
+          <text x="602" y="286" class="t-m t-pwr" text-anchor="end">COM1</text>
+          <text x="602" y="336" class="t-m" text-anchor="end">NO1</text>
+
+          <!-- ===== +12 V to COM1 ===== -->
+          <circle cx="672" cy="50" r="4" class="node-pwr"></circle>
+          <polyline class="w w-pwr" points="672,50 672,286 612,286"></polyline>
+
+          <!-- ===== K1 -> R385 ===== -->
+          <polyline class="w" points="612,336 706,336 706,248 740,248"></polyline>
+
+          <rect x="740" y="200" width="150" height="96" rx="7" class="box-load"></rect>
+          <text x="815" y="228" class="t t-b t-warn" text-anchor="middle">R385 pump</text>
+          <text x="815" y="244" class="t t-muted" text-anchor="middle" font-size="11">12 V diaphragm</text>
+          <text x="815" y="260" class="t t-muted" text-anchor="middle" font-size="11">~1 A · 2 A inrush</text>
+          <text x="815" y="278" class="t t-muted" text-anchor="middle" font-size="11">outside the tank</text>
+          <text x="732" y="242" class="t-m t-pwr" text-anchor="end">red +</text>
+          <text x="896" y="284" class="t-m">black −</text>
+          <polyline class="w" points="890,290 900,290 900,460"></polyline>
+
+          <!-- ===== C1 ===== -->
+          <line x1="920" y1="50" x2="920" y2="96" class="w w-pwr"></line>
+          <line x1="906" y1="96" x2="934" y2="96" class="w w-pwr" stroke-width="2.4"></line>
+          <line x1="906" y1="106" x2="934" y2="106" class="w" stroke-width="2.4"></line>
+          <polyline class="w" points="920,106 920,430 900,430"></polyline>
+          <circle cx="900" cy="430" r="4" class="node"></circle>
+          <text x="898" y="92" class="t-m" text-anchor="end">C1</text>
+          <text x="898" y="105" class="t-m t-muted" text-anchor="end">2200 µF</text>
+          <text x="898" y="118" class="t-m t-muted" text-anchor="end">25 V</text>
+        </svg>
+      </div>
+      <figcaption>
+        Nine connections. The relay module is the only thing that touches 12 V; the ESP32 never sees
+        more than 5 V, from USB. K2 stays unwired — it becomes the valve channel when beds 2 and 3
+        are plumbed, which is a separate question from the three stages here.
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="warn" role="note">
+    <span aria-hidden="true">⚠</span>
+    <div>
+      <strong>Two things to get right before you power it</strong>
+      <p><strong>The boot glitch.</strong> An ESP32 pin floats LOW out of reset and LOW closes an active-LOW relay — so a careless sketch pulses the pump at every boot. <code>setup()</code> writes GPIO18 HIGH <em>before</em> <code>pinMode()</code>; those lines are order-sensitive. If you hear a click at reset, stop and check them.</p>
+      <p><strong>Dry running.</strong> Prime the suction hose and keep the inlet under water. Seconds of dry running wears the R385's diaphragm, and at this stage nothing in software knows whether there is water.</p>
+    </div>
+  </div>
+
+  <section class="grid-2">
+    <div>
+      <h2>Connections <span class="pill">stage 1</span></h2>
+      <div class="tbl-card tbl-wrap">
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">USB 5 V</td><td class="mono">ESP32 USB port</td><td>keeps pump surges off the logic</td></tr>
+            <tr><td class="mono">ESP32 5V</td><td class="mono">Module VCC</td><td></td></tr>
+            <tr><td class="mono">ESP32 GND</td><td class="mono">Module GND</td><td></td></tr>
+            <tr><td class="mono">ESP32 GPIO18</td><td class="mono">Module IN1</td><td>LOW = pump ON</td></tr>
+            <tr><td class="mono">12 V +</td><td class="mono">F1 → +12 V bus</td><td>fuse at the source, 18 AWG onward</td></tr>
+            <tr><td class="mono">+12 V bus</td><td class="mono">K1 COM</td><td></td></tr>
+            <tr><td class="mono">K1 NO</td><td class="mono">R385 red (+)</td><td></td></tr>
+            <tr><td class="mono">R385 black (−)</td><td class="mono">GND rail</td><td></td></tr>
+            <tr><td class="mono">C1</td><td class="mono">+12 V ↔ GND</td><td>2200 µF, stripe to ground</td></tr>
+            <tr><td class="mono">12 V −</td><td class="mono">GND rail</td><td>tie to ESP32 GND at one point only</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Parts <span class="pill">stage 1</span></h2>
+      <ul class="parts">
+        <li><span class="ref">—</span><span>ESP32 DevKit</span></li>
+        <li><span class="ref">—</span><span>R385 12 V diaphragm pump</span></li>
+        <li><span class="ref">—</span><span>2-channel relay module, 5 V</span></li>
+        <li><span class="ref">—</span><span>12 V 2 A adapter</span></li>
+        <li><span class="ref">—</span><span>USB supply for the ESP32</span></li>
+        <li><span class="ref">F1</span><span>3 A slow-blow + holder <span class="qty">(optional on this adapter)</span></span></li>
+        <li><span class="ref">C1</span><span>2200 µF 25 V electrolytic</span></li>
+        <li><span class="ref">—</span><span>18 AWG wire, WAGOs, heat-shrink</span></li>
+        <li><span class="ref">—</span><span>6 mm tubing + inlet strainer</span></li>
+        <li><span class="ref">—</span><span>Bucket, multimeter</span></li>
+      </ul>
+      <h3 style="margin-top:20px">Not needed yet</h3>
+      <ul class="plain">
+        <li>Soil probe — stage 2</li>
+        <li>Solenoid valve, D1, K2 wiring — only when beds 2 and 3 are plumbed</li>
+        <li>Buck converter — only when a battery replaces the adapter</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Bring-up <span class="pill">stage 1</span></h2>
+    <p class="lede" style="margin-bottom:14px">
+      Each step adds one thing to a working state, so a fault points at the step that caused it.
+      <code>PROBE_FITTED</code> and <code>AUTO_AT_BOOT</code> are both false in the sketch already.
+    </p>
+    <ol class="steps">
+      <li><strong>Pump alone on the adapter.</strong> No ESP32, no relay. Centre pin of the barrel jack is +. Confirm it runs and primes, and <strong>meter its running current</strong> — that number decides whether this adapter can carry the valve later.</li>
+      <li><strong>ESP32 alone.</strong> Flash <code>bed1-irrigation.ino</code>, power over USB, Serial at 115200. It should print <code>STAGE: 1 — manual irrigation only (no probe)</code> and <code>Pump: OFF</code>, then connect and show its IP.</li>
+      <li><strong>Relay, no load.</strong> Wire VCC, GND and IN1 only; leave COM/NO empty. Hit <code>http://&lt;ip&gt;/irrigate?sec=10&amp;key=…</code> — K1 should click in, hold 10 s, release. Reset the ESP32 a few times and confirm <em>no</em> click at boot.</li>
+      <li><strong>Add the 12 V side.</strong> F1, C1, K1 COM and NO, pump in a bucket. Same 10 s cycle: pump runs, stops on its own.</li>
+      <li><strong>Drive it from the app.</strong> Put <code>ESP32_BASE_URL</code> and <code>ESP32_SHARED_SECRET</code> in <code>backend/.env</code>, restart the API, then tap Start on Bed 1. That is objective 1 done.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Checks that matter</h2>
+    <div class="tbl-card tbl-wrap">
+      <table>
+        <thead><tr><th>When</th><th>Measure</th><th>Expect</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill">boot</span></td><td>GPIO18 to GND</td><td>~3.3 V from the first instant — never a dip to 0</td></tr>
+          <tr><td><span class="pill">idle</span></td><td>K1 NO to GND</td><td>0 V — contacts open</td></tr>
+          <tr><td><span class="pill">running</span></td><td>K1 NO to GND</td><td>~12 V</td></tr>
+          <tr><td><span class="pill">running</span></td><td>+12 V bus</td><td>holds above ~11 V through pump start</td></tr>
+          <tr><td><span class="pill">running</span></td><td>pump current</td><td>your measured figure, steady — a climbing reading means it is fighting a blockage</td></tr>
+          <tr><td><span class="pill">any</span></td><td><code>/status</code></td><td><code>pump</code> matches what you can hear; <code>probeFitted:false</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>If it misbehaves</h2>
+    <ul class="plain">
+      <li><strong>Relay clicks at boot or reset.</strong> The active-LOW glitch — <code>digitalWrite(pin, HIGH)</code> must run before <code>pinMode(pin, OUTPUT)</code>.</li>
+      <li><strong>Relay clicks but the pump doesn't run.</strong> Contacts or 12 V side, not the drive. Meter K1 COM and NO to ground while it is on.</li>
+      <li><strong>Adapter buzzes or drops out at pump start.</strong> It is hitting its 2 A limit. Check C1's polarity and value; if it persists, the adapter is undersized for this pump.</li>
+      <li><strong>Pump runs but no water.</strong> Lost prime, or the strainer is blocked.</li>
+      <li><strong>App says irrigating, nothing happens.</strong> The backend cannot reach the node — check <code>ESP32_BASE_URL</code>, and that <code>/status</code> answers from the machine running the API.</li>
+    </ul>
+  </section>
+
+  <section class="later-sec">
+    <p class="eyebrow">Stage 2 · once stage 1 is solid</p>
+    <h2>Adding the probe</h2>
+    <p class="lede" style="margin-bottom:14px">
+      Three wires and a flag. This is the only other time the wiring changes.
+    </p>
+    <div class="grid-2">
+      <div>
+        <div class="tbl-card tbl-wrap">
+          <table>
+            <thead><tr><th>From</th><th>To</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">ESP32 3V3</td><td class="mono">Probe VCC</td><td>not 5 V — keeps AOUT inside the ADC's range</td></tr>
+              <tr><td class="mono">ESP32 GND</td><td class="mono">Probe GND</td><td></td></tr>
+              <tr><td class="mono">ESP32 GPIO34</td><td class="mono">Probe AOUT</td><td>ADC1 — ADC2 pins stop working once WiFi is up</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <ul class="plain">
+          <li>Set <code>PROBE_FITTED = true</code>, reflash.</li>
+          <li>Probe in <strong>air</strong> → <code>/raw</code>, note the number. Probe in <strong>water</strong> → <code>/raw</code> again. Then <code>/calibrate?dry=XXXX&amp;wet=YYYY&amp;key=…</code>, and copy both into <code>dryRaw</code>/<code>wetRaw</code> when you are happy.</li>
+          <li>Dry must be the <em>higher</em> raw number on a capacitive probe. If VWC sits at 0 or 100, the two are swapped.</li>
+          <li>Push the probe into the bed near where water actually lands, not at the edge.</li>
+          <li>The dashboard picks the reading up within ~5 s. That is objective 2.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="later-sec">
+    <p class="eyebrow">Stage 3 · once readings look right</p>
+    <h2>Turning on automatic irrigation</h2>
+    <p class="lede" style="margin-bottom:12px">
+      No wiring. Set <code>AUTO_AT_BOOT = true</code> and reflash — or leave the flag alone and call
+      <code>/auto?on=1&amp;key=…</code> to arm it without a rebuild.
+    </p>
+    <ul class="plain">
+      <li>Below <strong>32 % VWC</strong> the node starts a cycle on its own and stops at <strong>48 %</strong>. Those mirror <code>CROP_TARGETS["Covo"]</code> in <code>backend/main.py</code> — change them in both places, or the dashboard and the node will disagree.</li>
+      <li>A 10 min cap ends a cycle if moisture never reaches 48 %, and a 15 min soak blocks re-triggering so water has time to reach the probe.</li>
+      <li>Auto cannot arm without a probe — <code>/auto?on=1</code> returns an error at stage 1, and the trigger itself requires a plausible reading. A pulled-out probe stops watering rather than starting it.</li>
+      <li>Manual still wins: tapping Start pre-empts a running automatic cycle.</li>
+      <li>Watch the first few cycles. If it keeps hitting the 10 min cap, water is not reaching the probe.</li>
+    </ul>
+  </section>
+</main>

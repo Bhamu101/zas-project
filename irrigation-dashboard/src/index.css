@@ -67,6 +67,22 @@
   --color-neutral: #64748b;
   --color-neutral-bg: #f1f5f9;
 
+  /* ---- Status, at full colour -------------------------------------------
+     For status text that stands alone with no tinted chip behind it (see
+     StatusPill). Tuned for SATURATION, not darkness: darkening a hue makes it
+     read muddier, not stronger. Each of these is the most vivid value that
+     still clears 4.5:1 on a white card — measured, not eyeballed.
+
+     On white that ceiling is low, so most of these land back on the base tone;
+     green is the tightest of all (a vivid green fails AA on white by a wide
+     margin). `warn` is the one real gain: amber-800 was a muddy brown, and
+     orange-700 is far more saturated at slightly BETTER contrast. */
+  --color-ok-strong: #15803d; /* 5.02:1 — vivid greens can't clear AA on white */
+  --color-warn-strong: #c2410c; /* 5.18:1 — orange-700, was a muddy amber-800 */
+  --color-danger-strong: #dc2626; /* 4.83:1 */
+  --color-info-strong: #2563eb; /* 5.17:1 */
+  --color-neutral-strong: #64748b; /* 4.76:1 — grey, deliberately not colourful */
+
   /* ---- Data series (colourblind-safe ordering, not red/green adjacent) --- */
   --color-data-1: #2563eb;
   --color-data-2: #0d9488;
@@ -118,6 +134,15 @@
   --color-info-bg: rgba(59, 130, 246, 0.16);
   --color-neutral: #94a3b8;
   --color-neutral-bg: rgba(148, 163, 184, 0.14);
+
+  /* Dark has real headroom that white doesn't: these are saturated 400-level
+     hues rather than pale tints, and they still clear AA with room to spare.
+     Pale is the opposite of colourful — washing them out was the wrong move. */
+  --color-ok-strong: #34d399; /* 8.86:1 */
+  --color-warn-strong: #fbbf24; /* 10.20:1 */
+  --color-danger-strong: #ff6b6b; /* 6.14:1 */
+  --color-info-strong: #38bdf8; /* 7.95:1 */
+  --color-neutral-strong: #94a3b8; /* 6.64:1 — grey stays grey */
 
   --color-data-1: #60a5fa;
   --color-data-2: #2dd4bf;

@@ -13,20 +13,21 @@ import { apiFetch } from "../lib/apiClient";
 // with a real ESP32 behind it right now.
 const HARDWARE_BED_ID = 1;
 
-// Client-side irrigation simulation tuning. This still drives the visual
-// moisture ramp on the card (nice smooth feedback while a cycle runs), but
-// the actual start/stop now goes through the real backend first — for Bed 1
-// with ESP32_BASE_URL configured that's what fires the physical pump/valve;
-// for the other beds the backend just flips its own mock state the same way
-// the mobile app's manual controls already do.
+// Client-side moisture ramp for the SIMULATED beds (2 and 3), which have no
+// probe: it gives their cards smooth feedback while a cycle runs. Bed 1 is
+// excluded — it has a real probe, so its number is measured by the node and
+// arrives via the backend poll. Painting a made-up ramp over a real reading
+// would be worse than showing nothing.
 //
-// IMPORTANT: this ramp runs at a fixed cosmetic pace (a few seconds),
-// completely independent of the real requested duration. For Bed 1, calling
-// /stop when the ramp finishes would abort the real hardware cycle after
-// only a few seconds instead of letting it run the full requested duration
-// — so Bed 1's backend "stop" (which just syncs bookkeeping; the ESP32
-// already stopped the physical pump on its own timer by then) is scheduled
-// separately, timed to the real duration instead of the fake ramp.
+// Starting and stopping always goes through the backend first. For Bed 1 that
+// fires the physical pump; for the other beds the backend just flips its own
+// mock state, the same way the mobile app's manual controls do.
+//
+// The ramp runs at a fixed cosmetic pace (a few seconds) unrelated to the real
+// requested duration, which is why Bed 1 never used it to decide when to stop:
+// its backend "stop" is scheduled against the real duration instead. That
+// stop only syncs bookkeeping — the ESP32 has already halted the pump on its
+// own timer by then.
 const SIM_TICK_MS = 450;          // how often the moisture reading updates
 const SIM_STEP_PCT = 1.4;         // average % gained per tick
 const SIM_TARGET_GAIN = 24;       // total % the bed climbs once triggered
@@ -49,13 +50,49 @@ function DeltaTag({ value, goodDirection = "down" }) {
   );
 }
 
+function formatCountdown(sec) {
+  const m = Math.floor(sec / 60);
+  const r = sec % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+// Bed 1's cycle progress, from the node's own countdown (remainingSec in
+// /status, relayed by the backend). This is the number that moves during a
+// short manual test — soil moisture lags well behind the pump, because water
+// takes minutes to soak down to the probe.
+function CycleProgress({ bed }) {
+  if (bed.cycleType === "auto") {
+    return (
+      <p className="text-xs text-[var(--color-muted)] mt-3">
+        <span className="font-semibold text-[var(--color-ink)]">Automatic cycle</span> — runs until moisture
+        reaches {bed.vwcOptimalMin}%
+        {bed.remainingSec > 0 && ` (safety stop in ${formatCountdown(bed.remainingSec)})`}
+      </p>
+    );
+  }
+  const totalSec = Math.max(1, (bed.durationMin || 1) * 60);
+  const remaining = Math.min(totalSec, Math.max(0, bed.remainingSec ?? totalSec));
+  const pct = ((totalSec - remaining) / totalSec) * 100;
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-semibold text-[var(--color-ink)]">Watering cycle</span>
+        <span className="tabular-nums text-[var(--color-muted)]">
+          {Math.round(pct)}% · {formatCountdown(remaining)} left
+        </span>
+      </div>
+      <ProgressBar percent={pct} color="bg-sky-500" />
+    </div>
+  );
+}
+
 function stateForVwc(vwc, t) {
   if (vwc < t.vwcTrigger) return "critical";
   if (vwc < t.vwcOptimalMin) return "needs-water";
   return "optimal";
 }
 
-export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview }) {
+export default function IrrigationControl({ beds = [], systemInfo, irrigationOverview, onChanged }) {
   const [mode, setMode] = useState("automatic");
   // Per-bed live simulation: { [bedId]: { vwc, state, running } }
   const [sim, setSim] = useState({});
@@ -91,6 +128,9 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
       return;
     }
     setPending((prev) => ({ ...prev, [bedId]: false }));
+    // Pull the new state straight away instead of waiting for the next poll,
+    // so the card flips to "irrigating" and the countdown starts immediately.
+    onChanged?.();
 
     if (bedId === HARDWARE_BED_ID) {
       // Real hardware runs its own full timed cycle and stops itself — only
@@ -100,6 +140,10 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
       hardwareStopTimerRef.current = setTimeout(() => {
         apiFetch(`/api/irrigation/stop/${bedId}`, { method: "POST" }).catch(() => {});
       }, durationMin * 60 * 1000);
+
+      // Nothing to simulate: this bed's moisture is measured, not invented.
+      // The card picks up the real reading on the next dashboard poll.
+      return;
     }
 
     const t = bedTargets(bed, systemInfo);
@@ -187,10 +231,13 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {beds.map((bed) => {
-          const live = sim[bed.id];
+          // Bed 1 has a real probe now, so its moisture comes from the backend
+          // (which polls the node) and must never be overpainted by the
+          // cosmetic ramp — that ramp exists only for the simulated beds.
+          const live = bed.id === HARDWARE_BED_ID ? null : sim[bed.id];
           const vwc = live?.vwc ?? bed.vwc;
           const state = live?.state ?? bed.state;
-          const running = !!live?.running;
+          const running = live ? !!live.running : !!bed.irrigating;
           const t = bedTargets(bed, systemInfo);
           const s = stateStyles[state] || stateStyles.optimal;
           return (
@@ -215,6 +262,7 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
               </p>
 
               <ProgressBar percent={vwc} color={s.bar} />
+              {bed.id === HARDWARE_BED_ID && running && <CycleProgress bed={bed} />}
 
               <div className="flex items-center gap-1 text-xs text-[var(--color-muted)] mt-2 mb-4">
                 <ChevronRight size={12} />
@@ -257,7 +305,9 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
                 ) : running ? (
                   <>
                     <Loader2 size={15} className="animate-spin" />
-                    Irrigating… {Math.round(vwc)}%
+                    {bed.id === HARDWARE_BED_ID && bed.cycleType !== "auto" && bed.remainingSec > 0
+                      ? `Irrigating… ${formatCountdown(bed.remainingSec)} left`
+                      : `Irrigating… ${Math.round(vwc)}%`}
                   </>
                 ) : (
                   <>

@@ -69,14 +69,14 @@ export default function Dashboard({ data, onNavigate }) {
         </StatCard>
       </div>
 
-      <WaterUseChart
-        series={irrigationOverview?.waterUseSeries}
-        totalL={irrigationOverview?.todayWaterUseL}
-        deltaPct={irrigationOverview?.todayWaterUseDeltaPct}
-      />
+      <BedMoisture beds={beds} onNavigate={onNavigate} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BedMoisture beds={beds} onNavigate={onNavigate} />
+        <WaterUseChart
+          series={irrigationOverview?.waterUseSeries}
+          totalL={irrigationOverview?.todayWaterUseL}
+          deltaPct={irrigationOverview?.todayWaterUseDeltaPct}
+        />
         <EnergyPanel
           energyOverview={energyOverview}
           generatedKwhToday={extendedStats?.energyGeneratedKwhToday}

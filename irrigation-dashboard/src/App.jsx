@@ -93,6 +93,7 @@ function App() {
         beds={data.beds}
         systemInfo={data.systemInfo}
         irrigationOverview={data.irrigationOverview}
+        onChanged={refetch}
       />
     ),
     "energy": (

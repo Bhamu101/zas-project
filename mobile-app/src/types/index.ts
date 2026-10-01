@@ -164,3 +164,34 @@ export interface CropDiagnosis {
   treatment: string;
   preventionTips: string;
 }
+
+// GET /api/camera/{bedId} — photos from the ESP32-CAM on the stand
+// (backend/camera.py). `url` is a signed Supabase Storage URL, valid ~1 h.
+export type CameraFrameReason = 'scheduled' | 'requested' | 'irrigation' | 'boot';
+
+export interface CameraFrame {
+  id: string;
+  url: string;
+  takenAt: string; // ISO UTC
+  reason: CameraFrameReason | string;
+}
+
+export interface BedCameraResponse {
+  bedId: number;
+  online: boolean;
+  lastSeen: string | null;
+  rssiDbm: number | null;
+  captureRequested: boolean;
+  frames: CameraFrame[];
+  health: BedHealthCheck | null;
+  healthChecking: boolean;
+}
+
+// AI check of a camera photo (backend/camera.py): the CropDiagnosis shape plus
+// when/why it ran.
+export interface BedHealthCheck extends CropDiagnosis {
+  checkedAt: string;
+  frameId: string;
+  frameTakenAt: string;
+  trigger: 'auto' | 'manual';
+}

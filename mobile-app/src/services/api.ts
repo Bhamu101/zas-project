@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { Bed, CropDiagnosis, DashboardResponse } from '@/types';
+import type { Bed, BedCameraResponse, BedHealthCheck, CropDiagnosis, DashboardResponse } from '@/types';
 
 // Points at the same FastAPI backend the web dashboard uses (backend/main.py,
 // port 8021). A phone/emulator can't reach "localhost" on the dev machine, so
@@ -86,6 +86,15 @@ export const api = {
 
   triggerIrrigation: (bedId: number) =>
     request<{ bed: Bed }>(`/api/irrigation/trigger/${bedId}`, { method: 'POST' }),
+
+  getBedCamera: (bedId: number, limit = 12) =>
+    request<BedCameraResponse>(`/api/camera/${bedId}?limit=${limit}`),
+
+  requestBedPhoto: (bedId: number) =>
+    request<{ captureRequested: boolean }>(`/api/camera/${bedId}/capture`, { method: 'POST' }),
+
+  checkBedHealth: (bedId: number) =>
+    request<{ health: BedHealthCheck }>(`/api/camera/${bedId}/health-check`, { method: 'POST' }),
 
   assistantChat: (messages: { role: string; content: string }[]) =>
     request<{ reply: string }>('/api/assistant/chat', {

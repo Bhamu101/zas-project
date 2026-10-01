@@ -53,7 +53,10 @@ export const Spacing = {
   xl: 24,
   xxl: 32,
   xxxl: 48,
-  huge: 140, // clears the floating pill tab bar (64 tall, 24 from the bottom, plus safe-area inset)
+  // Bottom padding for scroll views. Was 140 when the tab bar floated over
+  // content; the bar is now anchored and takes its own layout space, so this is
+  // just ordinary breathing room. The name is kept so 14 call sites don't churn.
+  huge: 32,
 } as const;
 
 export const Radius = {

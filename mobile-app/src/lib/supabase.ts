@@ -36,9 +36,23 @@ const secureStorage = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
+// `web.output: "static"` means Expo server-renders the web routes in Node,
+// where there is no `window` — and AsyncStorage-on-web is localStorage under
+// the hood. Supabase touches storage during client construction, so without
+// this guard the *dev server itself* crashes with "window is not defined"
+// before a single route renders. There's no session to restore during SSR
+// anyway, so a no-op adapter is the correct behaviour, not just a silencer.
+const noopStorage = {
+  getItem: async (_key: string) => null,
+  setItem: async (_key: string, _value: string) => {},
+  removeItem: async (_key: string) => {},
+};
+
+const webStorage = typeof window === 'undefined' ? noopStorage : AsyncStorage;
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: Platform.OS === 'web' ? AsyncStorage : secureStorage,
+    storage: Platform.OS === 'web' ? webStorage : secureStorage,
     autoRefreshToken: true,
     persistSession: true,
     // Native apps have no URL to parse a session out of; leaving this on causes

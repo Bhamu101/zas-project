@@ -6,7 +6,6 @@ import {
   FileText,
   HelpCircle,
   Info,
-  Languages,
   type LucideIcon,
   LogOut,
   Settings as SettingsIcon,
@@ -51,15 +50,14 @@ export default function MoreScreen() {
   }
 
   const items: MenuItem[] = [
-    { icon: FileText, label: 'Reports', onPress: () => notReady('Reports') },
+    { icon: FileText, label: 'Reports', onPress: () => router.push('/(tabs)/more/reports') },
     { icon: Zap, label: 'Energy Management', onPress: () => router.push('/(tabs)/more/energy') },
     { icon: Bell, label: 'Alerts', onPress: () => router.push('/(tabs)/more/alerts') },
     { icon: Users, label: 'User Management', onPress: () => notReady('User Management') },
-    { icon: Database, label: 'Data Export', onPress: () => notReady('Data Export') },
-    { icon: Languages, label: 'Language', onPress: () => router.push('/(tabs)/more/settings') },
+    { icon: Database, label: 'Data Export', onPress: () => router.push('/(tabs)/more/export') },
     { icon: SettingsIcon, label: 'Settings', onPress: () => router.push('/(tabs)/more/settings') },
-    { icon: HelpCircle, label: 'Help & Support', onPress: () => router.push('/(tabs)/more/settings') },
-    { icon: Info, label: 'About', onPress: () => router.push('/(tabs)/more/settings') },
+    { icon: HelpCircle, label: 'Help & Support', onPress: () => router.push('/(tabs)/more/help') },
+    { icon: Info, label: 'About', onPress: () => router.push('/(tabs)/more/about') },
     { icon: LogOut, label: 'Logout', onPress: handleLogout, destructive: true },
   ];
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BedCameraCard } from '@/components/dashboard/BedCameraCard';
 import { CircularProgress } from '@/components/dashboard/CircularProgress';
 import { PrimaryButton } from '@/components/ui/PrimaryButton';
 import { ScreenBackground } from '@/components/ui/ScreenBackground';
@@ -44,17 +45,14 @@ const WEATHER_ICONS: Record<string, typeof Sun> = {
 
 export default function HomeScreen() {
   const farmProfile = useFarmStore((s) => s.profile);
-  const { data, isLoading, isOffline, error, lastSyncedAt, fetchNow, startPolling, stopPolling } =
-    useDashboardStore();
+  const { data, isLoading, isOffline, error, lastSyncedAt, fetchNow } = useDashboardStore();
   const { weather, fetchNow: fetchWeather } = useWeatherStore();
   const seenIds = useAlertsSeenStore((s) => s.seenIds);
   const [slowLoad, setSlowLoad] = useState(false);
   const [now, setNow] = useState(() => new Date());
 
-  useEffect(() => {
-    startPolling();
-    return stopPolling;
-  }, [startPolling, stopPolling]);
+  // Polling now starts in (tabs)/_layout.tsx so it covers every tab, not just
+  // this one — see the note there.
 
   useEffect(() => {
     if (!weather) fetchWeather();
@@ -85,7 +83,9 @@ export default function HomeScreen() {
     );
   }
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return null;
+  // Never render nothing: with no data, no error and no in-flight request this
+  // used to paint a blank screen. Show the skeleton, as every other tab does.
+  if (!data) return <LoadingState variant="home" />;
 
   const criticalBed = data.beds.find((b) => b.state === 'critical') ?? data.beds[0];
   const unseenAlertsCount = data.alerts.filter((a) => !seenIds.includes(a.id)).length;
@@ -170,6 +170,8 @@ export default function HomeScreen() {
             ))}
           </View>
         </Pressable>
+
+        <BedCameraCard bedId={1} bedName="Bed 1" />
 
         <View style={styles.section}>
           <Text style={styles.cardTitle}>Farm Insight</Text>

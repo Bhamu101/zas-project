@@ -1,0 +1,173 @@
+SOFTWARE USED — Agri-Intelligence 2026 Smart Irrigation Project
+==================================================
+Every language, framework, library, and external service used to build this
+project, grouped by the part of the system it belongs to, with the purpose it
+serves. Generated 2026-09-09.
+
+
+1. BACKEND API (backend/)
+--------------------------
+Language:       Python
+FastAPI         Web framework — defines every /api/* route (dashboard data,
+                irrigation start/stop, crop diagnosis, the Goho AI chat, alert
+                delivery) and serves the OpenAPI schema.
+Uvicorn         ASGI server that actually runs the FastAPI app, in dev
+                (`uvicorn main:app --port 8021`) and in production (Render's
+                start command).
+python-dotenv   Loads backend/.env (API keys, secrets, the ESP32's URL) into
+                the process at startup, so secrets stay out of source control.
+requests        Backend's HTTP client for calling Bed 1's ESP32 over WiFi
+                (/irrigate, /stop, /status) to trigger the real hardware.
+PyJWT[crypto]   Verifies Supabase-issued access tokens (ES256/RS256, via the
+                project's public JWKS) on every authenticated request — this
+                is what stops an unauthenticated caller from ever reaching
+                the API. The [crypto] extra pulls in the `cryptography`
+                library, needed for the asymmetric signature algorithms.
+google-genai    Official Gemini SDK — powers the "Goho AI" farm chat assistant
+                and the AI crop-health diagnosis feature (photo → diagnosis).
+twilio          Sends WhatsApp alerts (e.g. critical soil-moisture warnings)
+                to the farmer's phone via Twilio's WhatsApp Business API.
+
+
+2. WEB DASHBOARD (irrigation-dashboard/)
+------------------------------------------
+Language:               JavaScript (JSX)
+React                   UI library — every page/component in the dashboard.
+Vite                    Dev server + production bundler; also what makes
+                        `npm run dev` and `npm run build` fast.
+Tailwind CSS            Utility-first styling; the whole design system
+                        (colours, spacing, radii) is defined as CSS custom
+                        properties in src/index.css and consumed as Tailwind
+                        utility classes throughout.
+@tailwindcss/vite       Tailwind's Vite plugin (v4-style integration, no
+                        separate PostCSS config needed for Tailwind itself).
+PostCSS + Autoprefixer  Adds vendor-prefixed CSS automatically for broader
+                        browser support.
+React Router            Client-side routing — gives every page (Dashboard,
+                        Irrigation, Crop Health, etc.) a real, bookmarkable
+                        URL instead of one single-page shell.
+Recharts                Charting library — the moisture-by-bed graph, water-
+                        use-over-time chart, and other data visualisations.
+Leaflet + React-Leaflet Interactive map rendering — the Aerial View page's
+                        farm/bed map.
+Lucide React            Icon set used throughout the dashboard's UI.
+@supabase/supabase-js   Supabase client SDK — handles the dashboard's own
+                        login/session and attaches the auth token to every
+                        API request.
+Socket.io Client        Real-time client (installed for live/pushed sensor
+                        updates rather than polling alone).
+ESLint                  Lint rules (incl. the React Hooks plugin) — catches
+                        bugs like stale closures and incorrect hook usage
+                        before they ship.
+Electron                Optional desktop-app shell for the dashboard (an
+                        `npm run electron` script exists to package it as a
+                        native desktop window, separate from the web build).
+
+
+3. MOBILE APP (mobile-app/)
+------------------------------
+Language:                   TypeScript
+Expo / React Native         Cross-platform (iOS/Android/Web) app framework —
+                             the entire mobile app is built on this.
+Expo Router                 File-based navigation (src/app/) — tab bar,
+                             screens, and deep links.
+EAS (Expo Application       Cloud build service — compiles the actual
+  Services) / eas-cli        installable Android APK (and iOS builds) without
+                             needing a local Android/Xcode toolchain.
+React Native Reanimated /    Native-thread animations — the splash screen's
+  Worklets                   cinematic reveal, transitions, and other motion.
+React Native SVG            Vector graphics — the animated wordmark, icons,
+                             and custom-drawn UI elements.
+Expo Blur / Glass Effect     Glassmorphism UI effect (translucent, blurred
+                             card backgrounds) used across most screens.
+Expo Linear Gradient         Gradient fills (backgrounds, buttons, badges).
+Zustand                      Lightweight state management — auth, dashboard
+                             data, farm profile, and settings stores.
+@react-native-async-storage  On-device persistent storage — caches the last-
+  /async-storage              synced dashboard data for offline viewing and
+                             persists Zustand store state across app restarts.
+Expo Secure Store            Encrypted on-device storage for sensitive values
+                             (session tokens).
+@supabase/supabase-js        Supabase client SDK — handles sign-in/sign-up
+                             and session refresh; every backend request
+                             carries the resulting access token.
+Lucide React Native          Icon set used throughout the mobile UI.
+Expo Image / Image Picker    Optimised image display, and picking/capturing a
+                             photo for the crop-health diagnosis feature.
+Expo Location                Device GPS — farm/bed location features.
+@expo-google-fonts/*          Plus Jakarta Sans (interface) and Playfair
+                             Display (wordmark) web fonts, bundled properly
+                             for native rendering.
+@expo/ngrok                  Lets `npx expo start --tunnel` expose the local
+                             Metro dev server publicly, so a physical phone
+                             not on the same WiFi can still load the app
+                             during development/testing.
+ESLint + eslint-config-expo  Lint rules tailored to Expo/React Native
+                             projects, incl. the React Compiler's hooks rule
+                             that catches unsafe ref usage during render.
+TypeScript                   Static typing across the whole app.
+
+
+4. FIRMWARE (firmware/sensor-node/)
+--------------------------------------
+Language:            C++ (Arduino)
+Arduino IDE           Where the .ino sketch is written, compiled, and
+                       uploaded to the physical ESP32 board.
+ESP32 Arduino Core    Board support package providing the WiFi, WebServer,
+                       and mDNS libraries below (installed via the IDE's
+                       Boards Manager, not a separate download).
+  WiFi.h               Connects the ESP32 to the farm's WiFi network.
+  WebServer.h          Tiny built-in HTTP server — serves /irrigate, /stop,
+                       and /status directly from the board itself.
+  ESPmDNS.h            Advertises the board as http://irrigation.local/ on
+                       the local network (mDNS/Bonjour-style discovery).
+
+
+5. CLOUD SERVICES / EXTERNAL PLATFORMS
+------------------------------------------
+Supabase        Authentication provider for both the web dashboard and the
+                mobile app (shared user accounts) — issues the JWTs the
+                backend verifies with PyJWT above.
+Render          Cloud hosting for the FastAPI backend (render.yaml defines
+                the deployment: free-tier web service, Python runtime,
+                env vars for every secret). Gives the backend a stable public
+                HTTPS URL reachable from anywhere, not just the dev machine.
+Google Gemini API   Underlies the Goho AI chat assistant and the AI crop-
+                    health photo diagnosis (via the google-genai SDK above).
+Twilio           WhatsApp Business API — delivers critical-alert messages to
+                the farmer's phone.
+ngrok            Persistent public tunnel from the farm's local WiFi to Bed
+                1's ESP32 (a reserved static domain,
+                elastic-domestic-paddling.ngrok-free.dev), so the cloud-
+                hosted backend on Render can reach hardware that lives behind
+                a home router with no port-forwarding.
+GitHub           Source control hosting (Bhamu101/zas-project) — also what
+                Render's Blueprint deploy builds from directly.
+
+
+6. DEVELOPMENT TOOLS
+------------------------
+Git                 Version control for the whole repository.
+Visual Studio Code  Primary code editor.
+Claude Code         AI pair-programming CLI (Anthropic) — used throughout
+                    this project's build for planning, writing, and
+                    debugging code across the backend, both frontends, and
+                    the firmware, and for generating this project's
+                    documentation (including this file).
+Node.js / npm       JavaScript runtime and package manager for both the web
+                    dashboard and the mobile app.
+Python venv / pip   Python virtual environment and package manager for the
+                    backend.
+
+
+NOTES
+-----
+- This list reflects actual dependencies declared in backend/requirements.txt,
+  irrigation-dashboard/package.json, and mobile-app/package.json, plus the
+  cloud services/accounts actually wired into the deployed system — not a
+  wishlist or a generic "what a project like this might use."
+- Some libraries pull in supporting sub-dependencies (e.g. `cryptography` via
+  PyJWT's [crypto] extra) not listed individually here, since they aren't
+  used directly by this project's own code.
+- For a running log of what changed and why, see CHANGED_FILES.txt in this
+  same directory.

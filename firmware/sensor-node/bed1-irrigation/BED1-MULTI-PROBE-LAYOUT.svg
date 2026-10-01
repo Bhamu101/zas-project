@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <pattern id="soil" width="46" height="46" patternUnits="userSpaceOnUse">
+      <rect width="46" height="46" fill="#7b3f22"/>
+      <circle cx="6" cy="8" r="3" fill="#8e4c2b"/><circle cx="30" cy="14" r="4" fill="#6a351c"/>
+      <circle cx="18" cy="32" r="2.5" fill="#94542f"/><circle cx="40" cy="38" r="3" fill="#6f381e"/>
+      <path d="M10 22 l10 -4" stroke="#c9a764" stroke-width="1.2"/><path d="M28 28 l8 6" stroke="#c9a764" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1050" fill="#f6f4ee"/>
+  <text x="60" y="58" font-size="30" font-weight="700" fill="#1f5130">Bed 1 — three soil probes + S-shaped drip line</text>
+  <text x="60" y="88" font-size="17" fill="#555">Top-down view (not to scale). Probes sit 8–10 cm from the tube, in the root zone, spread along the bed.</text>
+
+  <!-- ===== BED ===== -->
+  <rect x="70" y="130" width="440" height="860" rx="6" fill="#d9a86c"/>
+  <rect x="84" y="144" width="412" height="832" fill="#2f5d9e"/>
+  <rect x="96" y="156" width="388" height="808" fill="url(#soil)"/>
+  <text x="290" y="1018" font-size="16" fill="#555" text-anchor="middle">wooden bed (≈ as in your photo)</text>
+
+  <!-- Drip tube: serpentine lanes x=150, 290, 430 -->
+  <path d="M150 110 L150 900 Q150 940 190 940 L250 940 Q290 940 290 900 L290 220 Q290 180 330 180 L390 180 Q430 180 430 220 L430 930"
+        fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="9" stroke-linecap="round"/>
+  <path d="M150 110 L150 900 Q150 940 190 940 L250 940 Q290 940 290 900 L290 220 Q290 180 330 180 L390 180 Q430 180 430 220 L430 930"
+        fill="none" stroke="#9fd3f5" stroke-width="4" stroke-linecap="round"/>
+  <!-- emitter drops -->
+  <g fill="#38bdf8">
+    <circle cx="150" cy="260" r="6"/><circle cx="150" cy="460" r="6"/><circle cx="150" cy="660" r="6"/><circle cx="150" cy="860" r="6"/>
+    <circle cx="290" cy="300" r="6"/><circle cx="290" cy="500" r="6"/><circle cx="290" cy="700" r="6"/><circle cx="290" cy="880" r="6"/>
+    <circle cx="430" cy="280" r="6"/><circle cx="430" cy="480" r="6"/><circle cx="430" cy="680" r="6"/><circle cx="430" cy="880" r="6"/>
+  </g>
+  
+  <rect x="424" y="926" width="12" height="12" rx="2" fill="#1e3a5f"/>
+  <text x="444" y="952" font-size="13" fill="#fff">end cap</text>
+
+  <!-- Probes (forks) between lanes -->
+  <g id="probes" font-size="15" font-weight="700" fill="#fff">
+    <!-- P1 top third, between lane1 & lane2 -->
+    <g transform="translate(220,330)">
+      <circle r="30" fill="#facc15" fill-opacity="0.25" stroke="#facc15" stroke-width="2" stroke-dasharray="5 4"/>
+      <rect x="-9" y="-16" width="6" height="32" fill="#d4af37"/><rect x="3" y="-16" width="6" height="32" fill="#d4af37"/>
+      <rect x="-12" y="-22" width="24" height="8" fill="#111"/>
+    </g>
+    <text x="178" y="386" fill="#fff">P1</text>
+    <!-- P2 middle, between lane2 & lane3 -->
+    <g transform="translate(360,560)">
+      <circle r="30" fill="#fb923c" fill-opacity="0.25" stroke="#fb923c" stroke-width="2" stroke-dasharray="5 4"/>
+      <rect x="-9" y="-16" width="6" height="32" fill="#d4af37"/><rect x="3" y="-16" width="6" height="32" fill="#d4af37"/>
+      <rect x="-12" y="-22" width="24" height="8" fill="#111"/>
+    </g>
+    <text x="318" y="616" fill="#fff">P2</text>
+    <!-- P3 bottom third, between lane1 & lane2 -->
+    <g transform="translate(220,790)">
+      <circle r="30" fill="#4ade80" fill-opacity="0.25" stroke="#4ade80" stroke-width="2" stroke-dasharray="5 4"/>
+      <rect x="-9" y="-16" width="6" height="32" fill="#d4af37"/><rect x="3" y="-16" width="6" height="32" fill="#d4af37"/>
+      <rect x="-12" y="-22" width="24" height="8" fill="#111"/>
+    </g>
+    <text x="178" y="846" fill="#fff">P3</text>
+  </g>
+
+  <!-- 8-10 cm spacing callout -->
+  <g stroke="#fff" stroke-width="1.5">
+    <line x1="152" y1="300" x2="208" y2="300"/><line x1="152" y1="293" x2="152" y2="307"/><line x1="208" y1="293" x2="208" y2="307"/>
+  </g>
+  <text x="180" y="290" font-size="13" fill="#fff" text-anchor="middle">8–10 cm</text>
+
+  <!-- Probe leads from forks to comparator boards (2 wires each) -->
+  <g fill="none" stroke-width="3">
+    <path d="M226 308 C 300 250, 480 250, 600 300" stroke="#e5e7eb"/>
+    <path d="M366 538 C 450 500, 520 520, 600 530" stroke="#e5e7eb"/>
+    <path d="M226 768 C 330 700, 480 740, 600 760" stroke="#e5e7eb"/>
+  </g>
+
+  <!-- Comparator boards -->
+  <g font-size="14" fill="#fff">
+    <rect x="600" y="270" width="92" height="60" rx="5" fill="#1d4ed8"/><text x="646" y="296" text-anchor="middle" font-weight="700">P1 board</text><text x="646" y="316" text-anchor="middle" font-size="12">FC-28</text>
+    <rect x="600" y="500" width="92" height="60" rx="5" fill="#1d4ed8"/><text x="646" y="526" text-anchor="middle" font-weight="700">P2 board</text><text x="646" y="546" text-anchor="middle" font-size="12">FC-28</text>
+    <rect x="600" y="730" width="92" height="60" rx="5" fill="#1d4ed8"/><text x="646" y="756" text-anchor="middle" font-weight="700">P3 board</text><text x="646" y="776" text-anchor="middle" font-size="12">FC-28</text>
+  </g>
+
+  <!-- ===== ESP32 ===== -->
+  <rect x="900" y="330" width="230" height="400" rx="10" fill="#1f2937"/>
+  <rect x="955" y="350" width="120" height="70" rx="4" fill="#9ca3af"/>
+  <text x="1015" y="392" font-size="18" font-weight="700" fill="#111" text-anchor="middle">ESP32</text>
+  <g font-size="14" fill="#e5e7eb">
+    <text x="912" y="470">3V3</text><text x="912" y="510">GND</text>
+    <text x="912" y="560">GPIO34</text><text x="912" y="600">GPIO35</text><text x="912" y="640">GPIO32</text>
+    <text x="1118" y="560" text-anchor="end">GPIO18</text><text x="1118" y="600" text-anchor="end">GPIO19</text>
+  </g>
+  <g fill="#fbbf24">
+    <circle cx="900" cy="465" r="5"/><circle cx="900" cy="505" r="5"/><circle cx="900" cy="555" r="5"/><circle cx="900" cy="595" r="5"/><circle cx="900" cy="635" r="5"/>
+    <circle cx="1130" cy="555" r="5"/><circle cx="1130" cy="595" r="5"/>
+  </g>
+
+  <!-- Shared power buses (red 3V3, black GND) -->
+  <g fill="none" stroke-width="3.5">
+    <path d="M692 285 H 760 V 465 H 900" stroke="#dc2626"/>
+    <path d="M692 515 H 760" stroke="#dc2626"/>
+    <path d="M692 745 H 760 V 465" stroke="#dc2626"/>
+    <path d="M692 297 H 780 V 505 H 900" stroke="#111"/>
+    <path d="M692 527 H 780" stroke="#111"/>
+    <path d="M692 757 H 780 V 505" stroke="#111"/>
+    <!-- AO signals -->
+    <path d="M692 312 H 820 V 555 H 900" stroke="#eab308"/>
+    <path d="M692 542 H 800 V 595 H 900" stroke="#f97316"/>
+    <path d="M692 772 H 840 V 635 H 900" stroke="#22c55e"/>
+  </g>
+  <g fill="#fff" stroke="#333" stroke-width="1"><circle cx="760" cy="515" r="4"/><circle cx="780" cy="527" r="4"/></g>
+
+  <!-- ===== Relay + pump ===== -->
+  <rect x="1210" y="520" width="150" height="110" rx="6" fill="#0f766e"/>
+  <text x="1285" y="560" font-size="16" font-weight="700" fill="#fff" text-anchor="middle">Relay module</text>
+  <text x="1285" y="582" font-size="13" fill="#d1fae5" text-anchor="middle">IN1 pump · IN2 valve</text>
+  <text x="1285" y="604" font-size="12" fill="#d1fae5" text-anchor="middle">(active-LOW)</text>
+  <g fill="none" stroke-width="3"><path d="M1130 555 H 1210" stroke="#a855f7"/><path d="M1130 595 H 1210" stroke="#ec4899"/></g>
+
+  <rect x="1420" y="720" width="140" height="170" rx="8" fill="#bfdbfe" stroke="#2563eb" stroke-width="2"/>
+  <rect x="1420" y="770" width="140" height="120" rx="0" fill="#60a5fa" fill-opacity="0.6"/>
+  <text x="1475" y="750" font-size="15" font-weight="700" fill="#1e3a8a" text-anchor="middle">Water tank</text>
+  <rect x="1460" y="820" width="60" height="50" rx="6" fill="#374151"/><text x="1490" y="850" font-size="13" fill="#fff" text-anchor="middle">Pump</text>
+  <path d="M1360 600 C 1400 640, 1400 800, 1460 845" fill="none" stroke="#111" stroke-width="3"/>
+  <text x="1300" y="690" font-size="13" fill="#333">12 V switched →</text>
+  <rect x="1250" y="400" width="130" height="50" rx="6" fill="#4b5563"/><text x="1315" y="431" font-size="14" fill="#fff" text-anchor="middle">12 V supply</text>
+  <path d="M1315 450 V 520" stroke="#dc2626" stroke-width="3"/>
+
+  <!-- Water line back to bed inlet -->
+  <path d="M1530 820 V 112 H 150" fill="none" stroke="#9fd3f5" stroke-width="6" marker-end="url(#arrow)"/>
+  <text x="820" y="128" font-size="15" fill="#2563eb" text-anchor="middle">water line → bed inlet</text>
+
+  <!-- Legend -->
+  <g font-size="14" fill="#333">
+    <rect x="560" y="850" width="320" height="170" rx="8" fill="#fff" stroke="#ddd"/>
+    <text x="578" y="876" font-weight="700">Wiring key</text>
+    <line x1="578" y1="897" x2="610" y2="897" stroke="#dc2626" stroke-width="4"/><text x="620" y="902">3.3 V (shared by all boards)</text>
+    <line x1="578" y1="922" x2="610" y2="922" stroke="#111" stroke-width="4"/><text x="620" y="927">GND (shared)</text>
+    <line x1="578" y1="947" x2="610" y2="947" stroke="#eab308" stroke-width="4"/><text x="620" y="952">P1 AO → GPIO34 (existing)</text>
+    <line x1="578" y1="972" x2="610" y2="972" stroke="#f97316" stroke-width="4"/><text x="620" y="977">P2 AO → GPIO35</text>
+    <line x1="578" y1="997" x2="610" y2="997" stroke="#22c55e" stroke-width="4"/><text x="620" y="1002">P3 AO → GPIO32</text>
+  </g>
+  <g font-size="14" fill="#333">
+    <rect x="910" y="850" width="470" height="170" rx="8" fill="#fff" stroke="#ddd"/>
+    <text x="928" y="876" font-weight="700">Placement rules</text>
+    <text x="928" y="902">• 8–10 cm from the tube, never on top of a drip hole</text>
+    <text x="928" y="926">• Same depth for all: prongs buried, top 1–2 cm under soil</text>
+    <text x="928" y="950">• Away from the wooden sides and corners</text>
+    <text x="928" y="974">• Boards + wire joints above soil, out of the water</text>
+    <text x="928" y="998">• Pump decision = average of working probes</text>
+  </g>
+</svg>

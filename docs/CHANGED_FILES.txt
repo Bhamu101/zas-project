@@ -2,6 +2,846 @@ CHANGED FILES LOG
 =================
 Running log of files changed per feature/task. Newest entries at the top.
 
+## 2026-09-29 (latest) — ESP32-CAM bench troubleshooting
+
+Board (AI-Thinker + ESP32-CAM-MB, COM11) is healthy: genuine OV2640, 4 MB PSRAM, SVGA frames
+at 12.5 fps, no brownout under WiFi. First end-to-end upload stored via a LOCAL backend + Cloudflare
+quick tunnel: bed-camera/bed1/20260929T115759Z_boot.jpg. Issues found:
+- esp_camera_init intermittently failed 0x106 "not supported" (once 20 reboots in a row);
+  camera-id-probe always read the ID fine, so blamed on the driver's 10 ms PWDN wake. FIXED below
+  (20/20 hw + sw restarts OK after the fix; the failure couldn't be reproduced on demand, so the
+  fix is evidence-based, not proven against a live failure).
+- Render has NO camera routes: backend/camera.py + diagnosis.py and main.py wiring are uncommitted.
+- Phone hotspot "Hotspot" gave the camera no internet (mobile data needed).
+- Weak TelOne signal (-86..-92 dBm) was NOT the antenna: the ESP32's default fast scan joined the
+  first TelOne AP on channel 1 (a far one) instead of the nearest (-69 dBm, ch 11). FIXED below.
+
+  M  firmware/camera-node/bed1-camera/bed1-camera.ino — wakeSensor(): probe-style sensor wake
+     (PWDN 50 ms down, 100 ms up with XCLK running) before each init, driver kept off PWDN
+     (pin_pwdn = -1), up to 5 in-place attempts before the old reboot fallback; logs the attempt.
+     ensureWifi(): all-channel scan + join the strongest AP; connect log shows AP BSSID + channel.
+     CAPTURE_INTERVAL_MS 10 -> 30 min (user's call; "Take photo" + post-irrigation photos unchanged)
+  M  irrigation-dashboard/src/components/dashboard/BedCamera.jsx — "every 10 min" -> "every 30 min"
+  M  backend/camera.py — comment no longer hard-codes the old 10-minute interval
+  A  firmware/camera-node/camera-capture-test/camera-capture-test.ino — no-WiFi bench test: 10-frame
+     burst with JPEG sanity check, 'c' prints a photo as base64 over serial, 'r' = ESP.restart;
+     same start-up code as bed1-camera
+  M  backend/.env — SUPABASE_SERVICE_ROLE_KEY filled in (git-ignored). Key was pasted in chat: ROTATE IT
+
+## 2026-09-25 (latest) — Bed 1 multi-probe layout diagram
+
+Top-down picture of Bed 1 with an S-shaped drip line and three soil probes, wired to the ESP32.
+Planning aid only; the firmware still reads a single probe on GPIO34.
+
+  A  firmware/sensor-node/bed1-irrigation/BED1-MULTI-PROBE-LAYOUT.svg — source drawing
+  A  firmware/sensor-node/bed1-irrigation/BED1-MULTI-PROBE-LAYOUT.png — rendered image (headless Edge)
+
+## 2026-09-25 (latest) — Tidied the project root into folders
+
+  R  docs/ <- CHANGED_FILES.txt, PROJECT-OBJECTIVES.md, PROJECT_CONTEXT.md, SOFTWARE_USED.txt,
+     SYSTEM_ARCHITECTURE.md/.pdf, SYSTEM_ARCHITECTURE_SPECIFICATION.md/.pdf (flat, so their
+     cross-references by filename still resolve)
+  R  design-canvas/ <- Main.dc.html, canvas.json, bed1-irrigation-circuit.html (git-ignored scratch)
+  M  .gitignore — ignores design-canvas/ instead of the three individual root files
+  M  docs/PROJECT_CONTEXT.md — folder tree updated
+
+Left at the root on purpose: render.yaml (Render reads the Blueprint from the repo root),
+.gitignore, skills-lock.json (skills CLI expects it at the root).
+
+## 2026-09-25 (latest) — Renamed "ZAS" to "Agri-Intelligence"
+
+Every visible "ZAS" label (mostly "ZAS 2026") now reads "Agri-Intelligence" (e.g. "Agri-Intelligence 2026").
+
+  M  PROJECT-OBJECTIVES.md, PROJECT_CONTEXT.md, SOFTWARE_USED.txt, SYSTEM_ARCHITECTURE.md,
+     SYSTEM_ARCHITECTURE_SPECIFICATION.md — titles / project line
+  M  SYSTEM_ARCHITECTURE.pdf, SYSTEM_ARCHITECTURE_SPECIFICATION.pdf — re-rendered from the .md
+     (python-markdown -> headless Edge); styling is a fresh stylesheet, not the original one
+  M  firmware/**/*.ino (5 sketches) — header comments + boot Serial banner
+  M  firmware/sensor-node/bed1-auto-irrigation-test/BED1-AUTO-IRRIGATION-CIRCUIT.html — eyebrow
+  M  brag-output/{brag-plan.md, composition-brief.md, composition/index.html, share-copy.txt}
+
+Deliberately NOT changed (renaming them would break things or rewrite history):
+  - Render service/URL zas-irrigation-api(-nmzs).onrender.com (render.yaml, eas.json, .env.example,
+    camera firmware BACKEND_URL) — it's the live service's hostname
+  - GitHub repo Bhamu101/zas-project; the "ZAS PROJECT" folder name/paths
+  - Older log entries below; videos/* briefs ("no ZAS 2026 references" rules, frame-packet paths)
+  - package-lock integrity hashes / base64 blobs that happen to contain "zas"
+
+## 2026-09-25 (later) — Bed 1 cycle-progress bar on Irrigation Control
+
+Reported: the bar didn't move during a manual cycle. It wasn't broken — for Bed 1 that bar is the
+REAL probe reading, which barely changes in a 1-minute test (water takes minutes to reach the probe),
+and the dashboard only polled every 15 s. Added a separate "Watering cycle" bar driven by the node's
+own countdown (remainingSec from /status), and faster polling while anything is irrigating.
+
+  M  irrigation-dashboard/src/pages/IrrigationControl.jsx — CycleProgress (% + m:ss left) for Bed 1;
+     button shows the countdown; refetches immediately after Start
+  M  irrigation-dashboard/src/hooks/useDashboardData.js — 3 s polling while a bed irrigates, 15 s otherwise
+  M  irrigation-dashboard/src/App.jsx — passes refetch to IrrigationControl as onChanged
+  M  backend/main.py — start seeds remainingSec/cycleType; stop clears them
+
+NOTE: Twilio WhatsApp returned "HTTP 401: Unable to create record: Policy evaluation failed" during
+testing — alerts are not currently being delivered (check the Twilio account / sandbox).
+
+## 2026-09-25 — Bed 1 switched to MANUAL-ONLY for testing
+
+AUTO_AT_BOOT = false in the production sketch, so the node only runs the pump when /irrigate is
+called from the dashboard or app. Same wiring and interlocks as the auto build; the probe is still
+read and shown. Chosen over the older bed1-manual-irrigation sketch because that one is written for
+the retired 2N2222 + automotive relay (active-HIGH pump pin) and would invert the pump on the
+current active-LOW relay module. Revert the flag (or send /auto?on=1) to re-arm automatic mode.
+
+  M  firmware/sensor-node/bed1-irrigation/bed1-irrigation.ino — AUTO_AT_BOOT true -> false
+
+## 2026-09-24 (later) — AI crop-health checks on the bed camera's photos
+
+Once a day, the first camera photo between 10:00 and 15:00 (CAT) goes through the same Gemini
+diagnosis the Crop Health page uses, with a prompt variant for an overhead whole-bed view at 800x600
+(told not to claim fine detail it can't see, and to answer "unclear" for dark/fogged frames). Runs
+as a background task, so the camera gets its 200 immediately. A moderate/high disease, pest or
+nutrient finding adds a red Recent Activity entry and sends a WhatsApp alert. "Check now" in both
+apps runs it on the latest photo (5-min cooldown; failed auto checks retry at most 3x/day).
+Results persist in the bucket as health/bed1/latest.json plus a timestamped copy per check, so they
+survive Render restarts and build a season record. Verified with mocked storage + Gemini, and the
+real Gemini error path.
+
+  A  backend/diagnosis.py — Gemini diagnosis moved out of main.py; `source` = phone | bed-camera
+  M  backend/main.py — crop-health endpoint calls diagnosis.py; health alert hook (activity + WhatsApp)
+  M  backend/camera.py — daily auto check, POST /api/camera/{bed}/health-check, health in GET response
+  M  irrigation-dashboard/src/components/dashboard/BedCamera.jsx — "AI crop check" panel
+  M  mobile-app/src/components/dashboard/BedCameraCard.tsx — same panel
+  M  mobile-app/src/services/api.ts, mobile-app/src/types/index.ts — checkBedHealth, BedHealthCheck
+  Supabase: `bed-camera` bucket now also allows application/json
+
+## 2026-09-24 — Bed camera (ESP32-CAM on the stand)
+
+AI-Thinker ESP32-CAM (OV2640) as its OWN node, separate from the irrigation ESP32 (the camera eats
+nearly every GPIO and its current spikes would brown out a board that switches the pump). It only
+makes outbound HTTPS calls, so it works on any WiFi with no tunnel: uploads a JPEG every 10 min
+(skipped 19:00-06:00), after every irrigation cycle, and when someone taps "Take photo" (it polls
+/pending every 20 s, which also serves as its heartbeat). Frames are stored in a new PRIVATE Supabase
+Storage bucket `bed-camera` (JPEG only, 1 MB cap, no policies) and served to clients as 1-hour
+signed URLs. Verified with TestClient against mocked storage; not yet tested on the real board.
+
+TO GO LIVE: set SUPABASE_SERVICE_ROLE_KEY in backend/.env AND on Render (plus CAMERA_SHARED_SECRET
+on Render, same value as backend/.env / the sketch), redeploy, then flash the sketch.
+
+  A  backend/camera.py — device endpoints (X-Camera-Key): POST /api/camera/{bed}/frames,
+     GET /api/camera/{bed}/pending; app endpoints: GET /api/camera/{bed}, POST /api/camera/{bed}/capture
+  M  backend/main.py — mounts the camera router; requests a photo whenever a Bed 1 cycle ends
+  M  backend/.env, backend/.env.example, render.yaml — CAMERA_SHARED_SECRET, SUPABASE_SERVICE_ROLE_KEY
+  A  firmware/camera-node/bed1-camera/bed1-camera.ino — camera sketch, FTDI flashing + power notes
+  A  irrigation-dashboard/src/components/dashboard/BedCamera.jsx — latest photo, history strip, Take photo
+  M  irrigation-dashboard/src/pages/BedMonitoring.jsx — camera beside the moisture trend chart
+  A  mobile-app/src/components/dashboard/BedCameraCard.tsx — same, polls only while screen focused
+  M  mobile-app/src/app/(tabs)/index.tsx — camera card on the home screen
+  M  mobile-app/src/services/api.ts, mobile-app/src/types/index.ts — getBedCamera / requestBedPhoto
+  Supabase: storage bucket `bed-camera` created (private)
+
+## 2026-09-24 — Objective 3 working; moving Bed 1 from the bench pot to the real bed
+
+Automatic irrigation proved out on a bench pot: node triggers below 32%% VWC, runs the pump, stops
+on moisture, soaks before it can re-trigger. All three objectives now work on real hardware.
+
+Pot timings were deliberately tiny (20 s auto cap, 2 min soak, 2 min manual ceiling) because the
+R385 moves 1-2 L/min and a field-sized cycle floods a pot long before the probe reads 48%%. Now
+restored to field values, with both sets recorded in the TIMING block so the rig can move either way
+without re-deriving them.
+
+IMPORTANT: AUTO_MAX_RUN_SEC (600) and SOAK_MS (900000) are ESTIMATES, not measurements. They depend
+on how fast water reaches this particular probe in this particular soil, which is unknown until a
+cycle has been timed. The sketch now says so at the definition. Method: run one manual cycle, time
+dry -> 48%%, set the cap to about twice that.
+
+Why the cap matters more in the field: on a resistive probe a disconnected lead is indistinguishable
+from bone-dry soil, so sensorOk cannot catch a broken wire. AUTO_MAX_RUN_SEC is the only thing
+between a failed probe and a bed watered until the tank empties.
+
+  M  firmware/sensor-node/bed1-irrigation/bed1-irrigation.ino
+
+## 2026-09-23 (evening) — Objective 2 done: real moisture on the dashboard
+
+Probe is a RESISTIVE FC-28 / YL-69 (blue comparator board, two prongs), not the capacitive v1.2 the
+sketch originally assumed. That mattered: a resistive probe reads FULL SCALE (4095) in air, because
+there is no conduction between the prongs at all. The plausibility ceiling of 4000 was rejecting a
+perfectly good reading as SENSOR FAULT. Raised RAW_PLAUSIBLE_MAX to 4095 and rewrote the probe
+section of the header for the right sensor. DO stays unconnected — we want the number from AO, not
+the comparator pot.
+
+Measured calibration, baked into the sketch so it survives reboots: dry=4095 (air), wet=1200 (in
+water, readings ranged 1150-1480). Air now reports 0%, water ~100%, and the dashboard tracks the
+probe live.
+
+Also hardened /calibrate. A URL pasted with its <air>/<water> placeholders still in it parsed via
+toInt() to dry=0 wet=0, which silently made every subsequent reading 0% with no error anywhere. It
+now rejects out-of-range values, dry <= wet, and spans narrower than 200 counts, naming the problem.
+
+KNOWN ISSUE for stage 3: dryRaw is anchored to AIR, which is drier than soil ever gets, so the
+useful range is compressed and normal dry soil sits near 0%. Fine for displaying a number; risky for
+a 32% trigger that has to decide when to pump. Before arming auto, let the bed dry out, read what
+raw actually settles at in dry soil (expect ~3000-3600), and use THAT as dryRaw.
+
+Also note: on a resistive probe a disconnected lead is indistinguishable from bone-dry soil, so the
+sensorOk check can no longer catch an unplugged probe. At stage 3 the protection against a phantom
+dry reading is AUTO_MAX_RUN_SEC and the soak period, nothing else. Powering the probe from a GPIO
+(energise only to read) would restore fault detection and cut corrosion — offered, not yet done.
+
+  M  firmware/sensor-node/bed1-irrigation/bed1-irrigation.ino
+
+## 2026-09-23 (later) — Stage 1 proven on hardware; stage 2 wiring the probe through to the dashboard
+
+Manual irrigation from the dashboard button works end to end on real hardware. Two environment
+faults found along the way, both worth recording because neither was in the code:
+
+  - Vite bound to [::1] only on this machine, so a browser resolving localhost to 127.0.0.1 got
+    connection refused and the dev server looked dead despite printing "ready". Fixed with
+    server.host = true in vite.config.js, which also exposes the dev server to a phone on the
+    same WiFi for mobile-app testing.
+  - backend/.env still held the previous session's ESP32 LAN IP, and the laptop had meanwhile
+    moved networks entirely. Switched ESP32_BASE_URL to http://irrigation.local — the sketch
+    already registers that mDNS name, so DHCP handing out a new address no longer matters.
+
+For stage 2, set PROBE_FITTED = true and fixed a conflict the real probe exposed: the dashboard
+painted a cosmetic client-side moisture ramp over every bed during a cycle, including Bed 1. With a
+real sensor that ramp is fabricated data covering a measurement, so the hardware bed now skips the
+simulation entirely and takes vwc, state and running straight from the backend poll. Beds 2 and 3
+keep the ramp since they have no probe.
+
+Timing chain for a reading: node samples every 2 s, backend polls the node at most every 4 s,
+dashboard polls the backend every 15 s — so worst case ~21 s to surface. Use /raw for calibration,
+which answers immediately.
+
+  M  irrigation-dashboard/vite.config.js
+  M  irrigation-dashboard/src/pages/IrrigationControl.jsx
+  M  backend/.env
+  M  firmware/sensor-node/bed1-irrigation/bed1-irrigation.ino
+
+## 2026-09-23 — Bed 1 production node: R385 pump, both irrigation modes on one circuit
+
+Merged the two bench sketches into the sketch Bed 1 actually runs, now that the R385 replaces the
+mini pump. The 2N2222 / 220 ohm / automotive-relay stage is gone entirely: K1 on the existing
+2-channel relay module switches the R385 (10 A contacts, ~1 A load), K2 keeps the solenoid, and both
+are ACTIVE-LOW. Automatic and manual cycles share one startCycle()/endCycle() pair so there is a
+single valve-before-pump interlock order rather than two.
+
+Two things worth remembering. Boot glitch: an ESP32 pin floats LOW out of reset and LOW closes an
+active-low relay, so setup() writes both pins HIGH *before* pinMode() makes them outputs — otherwise
+the pump twitches at every boot and brownout. Dead-heading: the R385 is positive-displacement, so the
+valve opens 1.5 s before the pump starts and closes 1.5 s after it stops, and a manual /irrigate now
+pre-empts a running auto cycle instead of returning 409.
+
+Production timings replace the bench ones: 2 h manual ceiling (matches MAX_IRRIGATION_MINUTES in the
+backend), 10 min auto cap, 15 min soak. Circuit doc covers wiring, parts, a 7-step bring-up order
+where each step adds one thing, and the meter readings to expect at each stage.
+
+Revised the same day once the actual supply was known: a 12 V 2 A adapter, with the ESP32 on USB.
+The buck is now drawn as a battery-phase part rather than the logic supply, since 2 A leaves only
+~0.2-0.7 A of headroom while the valve holds and the pump runs, and the R385 start surge is 2-3 A on
+top of that. Added C1 (2200 uF) across the bus at the load end to absorb the surge. F1 stays in the
+BOM but is honestly dormant against a current-limited adapter - it is there for the battery phase,
+where nothing else limits a short.
+
+Then scoped down again: Bed 1 is being tested on its own first, so VALVE_ENABLED was added and set
+false. A single bed has nothing to route between - routing is the solenoid's actual job - so the
+valve is drawn in the schematic as a multi-bed-phase part alongside K2 and D1, and left unwired. It
+also removes ~0.6 A from a 2 A rail and removes the dead-head risk entirely, since there is no shut
+valve for the R385 to pump against. Flip the flag when beds 2 and 3 are plumbed; nothing else needs
+to change. Fuse spec settled at 3 A slow-blow (T3A) with 18 AWG, though on a current-limited adapter
+it is genuinely optional - it earns its place only if a battery arrives.
+
+Restructured again around the three objectives the user is proving in order: manual irrigation from
+the app, then moisture on the dashboard, then automatic watering. Worth noting the three objectives
+are only TWO hardware stages - objective 3 adds no wiring at all, since the auto loop is already in
+loop() and only needs arming. Added PROBE_FITTED and AUTO_AT_BOOT alongside VALVE_ENABLED; stage 1
+is both false. With no probe the sketch skips sampling entirely rather than reading a floating
+GPIO34 and reporting convincing nonsense, /raw /calibrate /auto?on=1 return 409, and the auto
+trigger checks PROBE_FITTED so a half-finished stage 2 cannot start the pump. Circuit doc rewritten:
+stage 1 is now the primary schematic (nine connections, no probe, no valve) with stages 2 and 3 as
+short follow-on sections.
+
+  A  firmware/sensor-node/bed1-irrigation/bed1-irrigation.ino
+  A  firmware/sensor-node/bed1-irrigation/BED1-IRRIGATION-CIRCUIT.html
+
+## 2026-09-21 — /product-launch-video: WhatsApp Status portrait cut (Agri-Intelligence)
+
+videos/agri-intelligence-status/ — a 59.9 s, 1080x1920 portrait re-cut of the landscape launch
+film for WhatsApp Status (fits one status on current WhatsApp). Seven of the eleven frames
+(alert, Agri-Intelligence, app home, irrigation control, Goho AI, crop health, close) re-authored
+as stacked layouts from the approved landscape frames; energy, season memory, dashboard and
+reports frames dropped for length. Narration files, word timings, SFX, music bed (re-trimmed
+to 59.9 s) and caption skin carried over from videos/goho-rakangwara-launch/. Output:
+renders/video.mp4 (H.264/AAC, 11 MB).
+
+## 2026-09-21 — /product-launch-video: Agri-Intelligence launch film (HyperFrames)
+
+A 107 s, 1920x1080 narrated launch video in videos/goho-rakangwara-launch/ (renders/video.mp4).
+Eleven frames, all on a light register: phone alert hook → Agri-Intelligence lockup → mobile
+Home → web Irrigation Control (Automatic/Manual toggle + Trigger Irrigation Now, phone inset)
+→ Goho AI "why did Bed 1 go critical?" → Energy Management best-source decision with the
+recommendSource justification → Crop Health photo diagnosis (user-supplied tomato late-blight
+photo, diagnosis written into the API's own fields) → Goho AI season-memory crop advice →
+main dashboard zoom-out from the Farmer Advisory → Data & Reports count-ups → brand close.
+Brand is Agri-Intelligence throughout (no Goho Rakangwara / TelOne, no place or event names),
+per the user's sketch-review notes (storyboard v1→v7 change log lives in STORYBOARD.md).
+Audio: Kokoro bm_george narration (offline), faster-whisper word timings snapped to the
+script for karaoke captions, 28 bundled SFX, bundled "Business Moves vol. 12" bed trimmed/
+faded with ffmpeg (no HeyGen sign-in). Rebuilt screens are from the real dashboard/app
+source and the backend payload; the season-memory advice is illustrative of an intended
+capability (no such feature exists in code yet).
+
+Files (all new, under videos/goho-rakangwara-launch/):
+- BRIEF.md, STORYBOARD.md (v7 + Video direction + shot sequences), SCRIPT.md, frame.md
+  (blue-professional preset remixed onto the app's light tokens; dark v1 kept as
+  frame.dark-v1.md.bak), storyboard.html (the reviewed sketch sheet)
+- capture/extracted/{tokens.json,visible-text.txt,asset-descriptions.md}, capture/assets/
+- compositions/frames/01..11-*.html, compositions/captions.html, index.html
+- assets/{voice,sfx,music,fonts}/, audio_meta.json, caption_groups.json
+- renders/video.mp4, snapshots/ (cut-seam contact sheets)
+
+
+
+## 2026-09-21 — /brag launch video (Hyperframes) for the ZAS 2026 exhibition
+
+A 22.6 s, 1920x1080 brag video built from the dashboard's own UI: hook line, the
+"Soil Moisture by Bed" card recreated row-for-row (per-crop optimal band + trigger tick),
+a simulated tap on "Trigger Irrigation Now" ramping Bed 1 from 18 % into the green band,
+a three-stat frame (Solar / 3,240 L saved / 92 % crop health), and the Goho Rakangwara
+wordmark. v2 (same day, on request): re-cut as alert → action → ask → power — a push
+notification "Soil moisture critical in Bed 1" opens it, the tap on Trigger Irrigation Now
+follows, then a Goho AI exchange (typed question, grounded reply) and the Energy
+Management cards (Active Source Solar / Battery 85 % / Suggested Source Solar); 24.6 s.
+Dark-theme tokens, IBM Plex and Fraunces italic come straight from
+irrigation-dashboard/src/index.css. Music bed + sparse SFX are beat-locked to the
+bundled cue preset; a lime glow breathes with the track's RMS. No project source files
+were changed.
+
+  A  brag-output/brag-plan.md          — creative plan + storyboard
+  A  brag-output/composition-brief.md  — Hyperframes handoff brief
+  A  brag-output/composition/          — index.html + local assets (fonts, music, sfx, gsap, audio-data.js)
+  A  brag-output/brag.mp4              — rendered video (poster baked as frame 0)
+  A  brag-output/brag.jpg              — poster frame
+  A  brag-output/share-copy.txt        — one-paragraph share caption
+
+## 2026-09-21 — Automatic-irrigation bench-test sketch (objective 1, first hardware pass)
+
+New sketch that adds the soil-moisture loop on top of the mini-pump test: capacitive
+probe on GPIO34 (ADC1 — ADC2 is dead while WiFi is up), 16-sample average, linear
+raw->VWC map with dry/wet calibration points, and an AUTO cycle that starts below
+Covo's 32% trigger and stops at 48% optimal-min (same numbers as CROP_TARGETS in
+backend/main.py). Safety: 60 s per-auto-cycle cap, 90 s soak period after any cycle
+so it can't short-cycle, plausibility window on the raw reading so an unplugged probe
+never triggers watering. Manual /irrigate, /stop, /status, /pump kept; added
+/auto?on=0|1, /raw, /calibrate?dry=&wet=. Backend does not yet consume the real VWC
+— that is the next step.
+
+  A  firmware/sensor-node/bed1-auto-irrigation-test/bed1-auto-irrigation-test.ino
+
+## 2026-09-12 — Mini-pump bench-test sketch for Bed 1 manual irrigation
+
+New sketch so the manual-irrigation flow can be tested on the bench with a 3-6 V mini
+submersible pump instead of the 12 V / 15 A ZQB-12V. Same /irrigate, /stop, /status
+endpoints and shared secret as the production sketch, so backend + dashboard work
+unchanged. Pump is driven straight from the 2N2222 (no automotive relay), valve is
+behind a VALVE_ENABLED flag (default false), MAX_RUN_SEC capped at 120 s, and a
+bench-only /pump?on=0|1 toggle (30 s auto-off) was added to prove the transistor drive
+before running the full cycle. Production sketch untouched.
+
+  A  firmware/sensor-node/bed1-mini-pump-test/bed1-mini-pump-test.ino
+
+## 2026-09-10 — PROJECT-OBJECTIVES.md rewritten around the five current objectives
+
+Replaced the old three-objective framing (precision bed-level irrigation / resilient
+energy-aware power / farmer dashboard) with the five the user confirmed:
+  1. Automatic irrigation via soil-moisture sensors — designed, not built
+  2. Manual irrigation via web dashboard + mobile app — built (Bed 1 real hardware)
+  3. Remote access via the mobile app (aerial view + manual trigger) — built
+  4. Crop health analysis from a photo — built
+  5. AI assistant — built
+
+Each objective now carries a one-line built/not-built status. Solar power, the ATS, and
+the monitoring dashboard are demoted to a "Supporting (not headline objectives)" section;
+"solar tracking is a separate, independent project" is stated explicitly. Old sections
+kept only what was still accurate; dropped the gantry design-history, the parts BOM, and
+the step-by-step firmware pseudocode (over-detailed for an objectives doc — that
+belongs in the firmware/wiring docs). Title dropped "Energy-Driven" to match the shift in
+emphasis. Net ~7KB → ~3.5KB.
+
+Reason: user restated the project's objectives as a clean list of five and asked for the
+doc to match, "don't over-engineer it".
+
+Follow-up same day: user confirmed the five ARE the whole scope — stripped the
+"Supporting" and "Parked" sections too, so the doc is now only the five objectives
+(2.5KB).
+
+
+## 2026-09-10 — Spec correction: solar tracking removed from scope; 50W panel; drop battery chemistry
+
+Three factual corrections from the user, applied across all project docs:
+  1. The solar tracker is an INDEPENDENT project, not part of this system. Removed entirely
+     (sections, diagrams, sequence diagram, requirements rows, gap-matrix rows, future-work
+     items, vocabulary, prose) rather than kept as an out-of-scope note.
+  2. Solar panel is 50W, not 60W.
+  3. Battery is 12V but not LiFePO4 — chemistry/capacity now unstated ("12V battery"), was
+     "LiFePO4 12V 20Ah".
+
+- PROJECT-OBJECTIVES.md — dropped the whole "2b. Moving solar tracker" subsection; §2 is now a
+  flat two-bullet list (removed the now-pointless "2a." label). "Dual-axis tracking" dropped from
+  the parked list. 60W->50W, LiFePO4 12V 20Ah -> 12V battery.
+- PROJECT_CONTEXT.md — removed the "Solar Tracker Digital Twin" changelog bullet, the "Solar
+  tracker (new, planned)" hardware bullet, and the "Build and wire the solar tracker" next-work
+  item. Reworded the cross-cutting note that used "an original solar-tracker illustration" as an
+  example. Power-resilience line: 60W solar + LiFePO4 12V 20Ah -> 50W solar + 12V battery.
+- SYSTEM_ARCHITECTURE_SPECIFICATION.md — deleted §11 "Solar Tracking Architecture" and renumbered
+  every following section 12..29 -> 11..28 (headings, full ToC, List of Figures, List of Tables,
+  and all body "§N" cross-references). Figures renumbered 9..15 -> 8..14; "Figures 16-23 A-H" ->
+  "Figures 15-21 A-G". Sequence diagram "F. Solar Tracking" removed, G/H relettered to F/G.
+  Diagram Index table rebuilt (01..14, no 08-solar-tracking). Requirements table: FR-11 (solar
+  angle/tracking) removed, FR-12..14 relettered to FR-11..13. Hardware table: dropped the
+  "NEMA 17 stepper + A4988" row (that pairing was never the project's own decision anyway),
+  "60W solar panel + LiFePO4 12V 20Ah battery" -> "50W solar panel + 12V battery". Energy
+  diagrams in §4 and §10, the §5 "NOT PRESENT" box, the §4 "Solar tracking subsystem" paragraph,
+  the §23 gap-matrix row, §26 future-improvements item, and the §27/§28 prose all updated. PDF
+  regenerated from the markdown (new pipeline: python-markdown -> styled HTML -> headless-Edge
+  print-to-pdf; ~587KB).
+- architecture-diagrams/ — regenerated. 08-solar-tracking.png deleted; former 09..15 renamed to
+  08..14; diagram 02 dropped the "NEMA17+A4988 tracker" line; diagram 07 (energy) now
+  "[50W Solar Panel] -> [Charge Controller] -> [12V Battery]". 14 PNGs, 2x device-scale.
+- EXHIBITION_ANIMATION_BRIEF.md — solar tracker removed from Beat 2, the §4 power chain, the §5
+  on-screen vocabulary list, the §8 honesty-constraints "designed not built" list and its
+  "expected 10-15% gain" figure, and the §9 Claude-Design prompt. 60W->50W, dropped LiFePO4/20Ah.
+  The four-chapter structure (Water / Energy / Crop health / Aerial view) is unchanged; only the
+  tracker content inside the Energy chapter went.
+
+CHANGED_FILES.txt history left intact (dated log, not rewritten) — earlier entries still mention
+the tracker as it was understood at the time.
+
+Reason: user clarified the solar tracker is a separate project and corrected the panel/battery
+specs.
+
+Verified: full repo grep for "60W|LiFePO|20Ah|NEMA17|A4988|solar.track" comes back clean across
+all .md/.txt/.ino/.py/.js(x)/.ts(x) (excluding venv and the historical changelog); spec-doc
+section headings confirmed sequential 1-28 with no gaps; every "§N" / "Figure N" / "Table N"
+cross-reference re-audited against the renumbered targets; sequence diagrams re-lettered A-G;
+energy diagram PNG visually confirmed to read "50W Solar Panel -> Charge Controller -> 12V
+Battery".
+
+
+## 2026-09-10 — Restructured the animation brief around the four objectives
+
+- EXHIBITION_ANIMATION_BRIEF.md — reworked S3 from a generic five-beat arc into the
+  structure the user asked for: open on the PROBLEM, then four clearly-titled
+  chapters, one per objective, in order — Water optimisation, Energy optimisation,
+  Crop health, Aerial view — then close on the payoff (farmer sees it on phone +
+  dashboard), then loop. Each chapter carries its own on-screen title so a mid-loop
+  viewer knows which pillar they are watching. Added per-beat rough timings.
+- S5 — added a "chapter titles" line locking the four objective labels and their
+  order. S9 prompt — rewritten to instruct the four-chapter structure explicitly and
+  to state the tracker gain is expected ~10-15%, not measured.
+
+Reason: user wants problem-first, then the objectives (water / energy / crop health /
+aerial view) walked through one at a time.
+
+
+## 2026-09-10 — Exhibition loop animation brief for Claude Design
+
+- EXHIBITION_ANIMATION_BRIEF.md (new) — self-contained context document to hand to
+  Claude Design so it can build a looping screen animation for Scholastic Week in
+  Bulawayo. Written for a reader with zero project knowledge: one-paragraph project
+  summary, audience, a five-beat story arc, the accurate hardware facts (fixed pipes
+  + one solenoid valve per bed, one bed at a time, NOT the abandoned gantry design),
+  on-screen vocabulary, the shared brand palette pulled from mobile-app/src/constants/
+  theme.ts and irrigation-dashboard/src/index.css, deliverable spec, honesty
+  constraints on which parts are built vs. designed, and the ready-to-paste prompt.
+- Assumptions stated in the doc rather than guessed silently: 1920x1080 landscape,
+  silent, 60-75s seamless loop, HTML output (matches the existing Chromium kiosk
+  setup). User should correct those lines before sending if the venue differs.
+
+Reason: user asked for a project context document plus the prompt to use.
+
+
+## 2026-09-10 — Fixed: splash lockup was invisible (started after the redirect fired)
+
+- mobile-app/src/app/index.tsx — the TelOne lockup added in the previous entry was never visible
+  to a signed-in user. My own bug: `LOCKUP_START` was `ACTIONS_START + 200` (3100ms) while the
+  auth redirect to /(tabs) fired at `ACTIONS_START` (2900ms) — the screen navigated away 200ms
+  before the lockup began fading in, so it could not be seen at all. Fixed by decoupling the two:
+  `LOCKUP_START` is now `UNDERLINE_START + 250` (2350ms) with its own `LOCKUP_DURATION` (550ms,
+  previously borrowing ACTIONS_DURATION), and the redirect moved to a new `REDIRECT_AT` =
+  `LOCKUP_START + LOCKUP_DURATION + 800` (3700ms) so the finished sequence is held on screen
+  rather than flashed past. Net: lockup fully opaque at 2900ms, on screen 1350ms before the
+  redirect. Timing sequence verified numerically rather than by eye.
+- Same file — lockup made more prominent now that it's actually seen: 236x106 -> 290x130 (aspect
+  ratio still pinned to the asset's real 1297x580 so it can't distort), card padding evened up,
+  and a soft shadow/elevation added so the white card reads as a deliberate plate on the lime
+  gradient instead of a flat cut-out.
+
+Reason: user re-sent the lockup asking for it on the splash — it had been added, but the timing
+bug meant it never rendered, so from their side nothing had happened.
+
+Verified: `npx tsc --noEmit` clean; timing sequence recomputed and printed to confirm the lockup
+now starts and completes before the redirect; Metro log confirms the hot reload reached the phone
+(`Android Bundled 1598ms`).
+
+
+## 2026-09-10 — TelOne lockup on the in-app splash; fixed dev-server SSR crash; .env URL fix
+
+- mobile-app/src/lib/supabase.ts — **fixed a crash that took down the whole Expo dev server.**
+  `expo start` died with `ReferenceError: window is not defined` before serving anything. Cause:
+  `app.json` sets `web.output: "static"`, so Expo server-renders web routes in Node; the client
+  picks `AsyncStorage` when `Platform.OS === 'web'`, and AsyncStorage-on-web is `localStorage`
+  under the hood; Supabase touches storage during `createClient`, i.e. at module load, so the
+  Node render blew up immediately. Added a `noopStorage` adapter used when `typeof window ===
+  'undefined'`. This is correct behaviour rather than a silencer — there is no session to restore
+  during SSR. Pre-existing bug from the 2026-09-08 Supabase integration; it would also have broken
+  any `expo export -p web`.
+- mobile-app/.env — `EXPO_PUBLIC_API_URL` pointed at `zas-irrigation-api.onrender.com`, but the
+  actual deployed service is `zas-irrigation-api-nmzs.onrender.com`. Would have made the whole
+  Expo Go preview look broken (every request failing) for a reason unrelated to the app. Fixed
+  both the active line and the commented-out reference above it.
+- mobile-app/src/app/index.tsx — added the TelOne | Agri-Intelligence lockup to the animated
+  splash route, fading up from the bottom on a new `LOCKUP_START` beat (200ms after the actions
+  beat) so the institutional mark lands last, after the product identity finishes introducing
+  itself. The animated AGRI-INTELLIGENCE wordmark is untouched. The lockup sits on a white rounded
+  card: the supplied artwork has an opaque white background, so on the lime gradient it would
+  otherwise read as a stray white rectangle — the card makes that background intentional. Image
+  dimensions hard-derived from the asset's real 1297x580 (~2.24:1) so it can't distort.
+  Animated.Values follow the project's `useState(() => new Animated.Value(x))` pattern, not
+  `useRef().current`, per the React Compiler lint rule.
+
+Reason: user asked to preview on Expo Go before building, then to put the lockup on the splash.
+Note Expo Go cannot render the *native* (app.json) splash or the launcher icon at all — it uses
+its own — so those two still need a real build to be seen; this in-app splash is the part that is
+previewable now.
+
+Verified: `npx tsc --noEmit` clean; `npx expo lint` shows only the 1 pre-existing unrelated error
+in (tabs)/index.tsx; Metro log confirms `Android Bundled` (phone connected via Expo Go) and a
+clean 148ms hot-reload of the change, plus the web SSR render bundling successfully now — which
+is the direct confirmation the `window is not defined` fix holds.
+
+
+## 2026-09-10 — Real app logo + TelOne/Agri-Intelligence splash screen
+
+- mobile-app/assets/images/agri-logo-source.png (new, supplied by user) — the real
+  plant/circuit logo (1080x720, green tree on near-black). This is the asset the project docs
+  have been flagging as "pending" since August (README + PROJECT_CONTEXT both noted LogoMark was
+  a placeholder awaiting it).
+- mobile-app/assets/images/agri-logo-mark.png (new, generated) — the same tree cropped to its
+  content bbox with the black backdrop feathered out to transparency (alpha ramp from luminance
+  18->45 so leaf edges stay smooth rather than hard-keyed). This is the in-app variant, so the
+  mark can sit on any surface instead of carrying a black square with it.
+- mobile-app/assets/images/icon.png, android-icon-foreground.png, android-icon-background.png,
+  android-icon-monochrome.png, favicon.png — all regenerated from the source logo via Pillow
+  (script kept in the session scratchpad). Sizing follows each target's rules rather than one
+  blanket resize: launcher icon at 78% of a 1024px black canvas; adaptive foreground at 60% of
+  512px on transparency (Android masks the outer ~1/3, so the logo has to sit inside the centre
+  safe zone); adaptive background flat black; monochrome a flat white silhouette derived from the
+  alpha channel for Android 13+ themed icons; favicon at 86% of 48px.
+  Originals preserved in mobile-app/assets/images/_originals-backup/.
+- mobile-app/assets/images/splash-icon.png — replaced. **This was still the stock Expo logo**
+  (228x213, byte-identical in size to expo-logo.png) — i.e. the app's launch screen has been
+  showing Expo's own placeholder branding this whole time. Now the TelOne | Agri-Intelligence
+  lockup, cropped from the existing splash-screen.png (its content sat at y=331..831 inside a
+  1254px square of white) with a 40px even margin re-added, so `imageWidth` maps to actual
+  artwork rather than mostly-empty canvas.
+- mobile-app/app.json — splash plugin now `backgroundColor: "#FFFFFF"` (was #173A2E dark green;
+  the lockup is artwork on white, so a dark backdrop would have framed it in a white box) and
+  `imageWidth: 300` (was 76, sized for the small square Expo mark). Also removed the `ios.icon`
+  override, which pointed at `./assets/expo.icon` — a file that does not exist. Harmless on
+  Android, would have broken an iOS build; iOS now falls back to the valid top-level icon.
+- mobile-app/src/components/ui/LogoMark.tsx — placeholder SVG replaced with the real asset via
+  expo-image, exactly as the file's own TODO comment specified. Props/API (`size`, `tone`) kept
+  identical so call sites are unaffected. Note: this component currently has zero call sites — the
+  in-app splash uses an animated text wordmark, not this — so the swap removes a stale placeholder
+  but changes nothing visible yet.
+
+Reason: user supplied the real logo and asked for the TelOne/Agri-Intelligence lockup on the
+splash screen.
+
+Verified: `npx tsc --noEmit` clean; `npx expo lint` shows only the 1 pre-existing unrelated error
+in (tabs)/index.tsx; app.json validated as JSON; every generated asset re-opened and its
+dimensions/mode confirmed; launcher icon and splash asset both inspected visually.
+
+Not done / open: the in-app animated splash route (src/app/index.tsx, the letter-by-letter
+AGRI-INTELLIGENCE wordmark on a lime gradient) is untouched — the lockup is artwork on white and
+would read as a white box on that gradient, so that needs a deliberate design decision rather than
+a drop-in. Also still open: the earlier "app not opening" crash was never root-caused; the user
+reports it opening now, so it may have been the known-bad first build being installed.
+
+
+## 2026-09-09 — Bed 1 pump circuit rebuild/verification procedure
+
+- firmware/sensor-node/bed1-manual-irrigation/BED1-PUMP-CIRCUIT-REBUILD.md (new) +
+  BED1-PUMP-CIRCUIT-REBUILD.pdf (new) — step-by-step disconnect/verify/reconnect/test procedure,
+  written after a bench test where the relay clicked but the pump never ran, and multimeter
+  checks (86->GND=12.9V correct, 85->GND=6V, 85-to-86=5.6V) showed current leaking through the
+  coil at idle — pointing at the 2N2222 or 1N4007 being wired to the wrong physical leg. Step 0:
+  safe disconnect. Step 1: verify the 1N4007's actual cathode/anode with a multimeter in
+  diode-test mode, in isolation, rather than assuming the banded-end marking is correct or that
+  it was installed as intended. Step 2: verify the 2N2222's actual Base/Collector/Emitter the
+  same way (explicitly not trusting a generic datasheet pinout, per this project's own prior
+  caveat that TO-92 pinout varies by manufacturer). Step 3: reconnect in 6 sub-stages (3a base
+  drive alone -> 3b add E/C -> 3c add coil+diode with idle/triggered voltage checks -> 3d add
+  pins 30/87 with the same checks -> 3e add the pump -> 3f add the valve), each stage building on
+  a verified-working previous stage with its own pass/fail check, so a fault is isolated to
+  exactly the stage that introduced it rather than requiring a full rebuild-and-hope.
+
+Reason: user asked to disconnect and reconnect the circuit with step-by-step guidance and testing
+along the way, plus a diagram, after live voltage readings pointed at a probable
+transistor/diode-leg mixup rather than a relay or fuse problem.
+
+Verified: PDF rendered successfully (85KB); procedure content directly follows from this
+session's actual multimeter readings, not a generic rebuild guide.
+
+
+## 2026-09-09 — Fixed: previous APK build crashed on launch (missing Supabase env vars)
+
+- mobile-app/eas.json — added `EXPO_PUBLIC_SUPABASE_URL` and
+  `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the `preview` and `production` build profiles' `env`
+  blocks, alongside the `EXPO_PUBLIC_API_URL` added last entry. Root cause: `mobile-app/.env` is
+  gitignored, so it never reached EAS's build servers — `src/lib/supabase.ts` calls
+  `createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)` with both env vars falling back to `''`
+  when unset, and `@supabase/supabase-js` throws on an empty/invalid URL at module load time,
+  before any screen can render — a hard crash on app launch, matching "the app is not opening".
+  The publishable key is safe to commit (per the file's own comment: "grants nothing by itself"),
+  so putting it directly in `eas.json` (already committed) is fine — only the API URL and this key
+  are needed at build time; nothing secret is exposed.
+- Rebuilt via `npx eas-cli build --platform android --profile preview --non-interactive` with the
+  fix in place (previous build from the last entry is now known-bad and should not be
+  distributed).
+
+Reason: user reported the just-built APK wouldn't open at all. Traced to the build config gap
+(env vars only partially wired) rather than a runtime/network issue.
+
+Verified: confirmed `.env` is listed in `.gitignore` (root, line 10) so it's excluded from what
+EAS uploads; confirmed `supabase.ts`'s fallback-to-empty-string behavior and that
+`createClient` receiving an invalid URL throws synchronously. Rebuild kicked off; result pending.
+
+
+## 2026-09-09 — Full System Architecture and Technical Design Document + APK build
+
+- SYSTEM_ARCHITECTURE_SPECIFICATION.md (new) + .pdf (new) — 29-section professional architecture
+  spec per the user's detailed brief (cover page, document control, TOC/LOF/LOT, requirements
+  tables, 15 numbered figures, 8 UML-style sequence diagrams, technology stack, HW/SW interface
+  table, and a dedicated "Architecture Validation and Implementation Gaps" section). Written only
+  after re-inspecting the actual codebase (backend/main.py in full, PROJECT-OBJECTIVES.md,
+  PROJECT_CONTEXT.md, auth.py, energySimulation.js, AerialView.jsx, the current .ino) rather than
+  reusing the narrower same-day SYSTEM_ARCHITECTURE.md. Key corrections this surfaced vs. assuming
+  the brief's premises: the solar tracker's motor choice is explicitly UNDECIDED in the project's
+  own notes (servo vs. continuous-rotation) — NEMA17+A4988 is NOT the documented choice, so it's
+  labeled throughout as the brief's assumption, not a project fact; there is no database anywhere
+  (in-memory Python lists + one JSON settings file); no MQTT (HTTP/REST throughout); no automatic
+  irrigation logic despite the UI's "Automatic" toggle; no real sensors anywhere except Bed 1's
+  pump/valve actuation acknowledgement; energy/solar/GIS-device data is 100% simulated. Sequence
+  diagrams for subsystems with zero implementation (auto-irrigation, sensor telemetry, low-pressure
+  alert, solar tracking) were deliberately omitted rather than fabricated, per the brief's own
+  validation rule.
+- architecture-diagrams/ (new folder, 15 PNG files, 2x device-scale / ~2800x2000px) —
+  01-overall-system-architecture through 15-security-architecture, generated via a small Python
+  script (gen_diagrams.py, scratchpad) building 15 individual styled HTML pages (title + status
+  badge: Implemented/Partial/Planned + the same ASCII diagram content as the corresponding section
+  of the .md/.pdf), screenshotted individually via headless Edge (`--screenshot`,
+  `--force-device-scale-factor=2`). Hit and fixed one bug: the first screenshot pass used bash's
+  `$(pwd)` for the file:// URL, which resolves to a Git-Bash-internal `/tmp/...` mount that the
+  native Edge binary can't read — every image silently came back as an identical "File not found"
+  page (same byte size, confirmed by inspection). Fixed by building the file:// URL from the known
+  Windows-style absolute path instead. Spot-checked two of the fifteen (06, 08) visually after the
+  fix to confirm correct, distinct, readable content.
+- Kicked off and completed `npx eas-cli build --platform android --profile preview
+  --non-interactive` (queued in the background during the architecture-doc work). Build succeeded;
+  install link: https://expo.dev/accounts/bhamu/projects/agri-intelligence/builds/0db08a09-549d-4786-b042-3fa59109291a
+
+Reason: user requested a professional System Architecture and Technical Design Document (acting as
+senior systems architect / IoT architect / technical writer) covering every subsystem in exhaustive
+detail, explicitly requiring validation against the real codebase rather than a generic/assumed
+architecture, plus a dedicated gap-analysis section and individual diagram export files.
+
+Verified: every claim cross-checked against a specific file/line this session (backend routes,
+data model, auth.py, firmware .ino, dashboard energy/GIS source); master PDF rendered successfully
+(~469KB); all 15 diagram PNGs regenerated after the path bug and confirmed non-identical by file
+size, two confirmed visually correct.
+
+
+## 2026-09-09 — Generated SOFTWARE_USED.txt and SYSTEM_ARCHITECTURE.md/.pdf
+
+- SOFTWARE_USED.txt (new) — inventory of every language/library/service actually used, grouped
+  by part of the system (backend, web dashboard, mobile app, firmware, cloud services, dev
+  tools). Pulled directly from backend/requirements.txt and both package.json files rather than
+  written from memory.
+- SYSTEM_ARCHITECTURE.md (new) + SYSTEM_ARCHITECTURE.pdf (new) — architecture doc covering the
+  overall topology (ASCII diagram), a breakdown of each component (both clients, backend, auth,
+  AI/alerts services, the ESP32 hardware layer + its ngrok tunnel), five request-flow walkthroughs
+  (sign-in, dashboard load, Bed 1 real-hardware trigger, AI diagnosis, critical alert), a
+  deployment-topology table, and a security-notes section (JWT verification, the ESP32 shared
+  secret's limits, CORS, secret handling). PDF generated via the usual scratchpad-HTML ->
+  headless Edge --print-to-pdf flow.
+
+Reason: user asked for a written record of the software stack and, right after, the system
+architecture — both reference docs rather than functional changes.
+
+Verified: content cross-checked against the actual deployed state from this session (Render URL,
+ngrok domain, Supabase project, verified endpoints) rather than assumed; PDF rendered successfully
+(148KB).
+
+
+## 2026-09-09 — Backend deployed to Render; mobile app pointed at it; APK build started
+
+- Backend deployed via the Render Blueprint the user created manually (dashboard.render.com →
+  New → Blueprint → Bhamu101/zas-project). Live at
+  https://zas-irrigation-api-nmzs.onrender.com — verified: `/` → 200, `/openapi.json` → 10 routes
+  ("Smart Irrigation API"), `/api/dashboard` (no auth header) → 401, confirming Supabase JWT
+  verification is wired correctly on the deployed instance too. All `sync: false` secrets from
+  render.yaml (GEMINI_API_KEY, TWILIO_*, ESP32_BASE_URL → the ngrok tunnel URL,
+  ESP32_SHARED_SECRET) were filled in during that Blueprint setup.
+- mobile-app/eas.json — added `"env": {"EXPO_PUBLIC_API_URL": "https://zas-irrigation-api-nmzs.onrender.com"}`
+  to both the `preview` and `production` build profiles, so any EAS-built binary defaults to the
+  deployed backend instead of `localhost:8021` (which only ever worked for a same-machine
+  dev/web build). Local `npm start` dev workflow is untouched — still reads `.env`
+  (`EXPO_PUBLIC_API_URL` unset there → falls back to localhost, as before) or the in-app Settings
+  override at runtime.
+- Started `npx eas-cli build --platform android --profile preview --non-interactive` (the `apk`/
+  `internal` distribution profile — directly installable/sideloadable, unlike `production` which
+  builds an AAB for Play Store submission). Already logged in as `bhamu` / anesuk002@gmail.com,
+  project already linked (`ece3f396-d518-41c8-9e97-34e399df221c`), so this ran without needing
+  further login. Build queued in the background — result not yet confirmed as of this entry.
+
+Reason: continuing the "farmer can use it remotely" setup from the previous entry (tunnel + ESP32
+auth) — this entry covers getting the backend actually live on the internet and pointing a real,
+installable build of the app at it.
+
+Verified: deployed backend endpoints spot-checked directly via curl (see above). EAS build
+kicked off successfully (no immediate CLI error); actual build success/APK download link still
+pending.
+
+
+## 2026-09-09 — Remote access setup: shared-secret auth + persistent ESP32 tunnel
+
+- firmware/sensor-node/bed1-manual-irrigation/bed1-manual-irrigation.ino — added a
+  `SHARED_SECRET` constant and a `requireAuth()` check (returns 403 on a missing/wrong `?key=`)
+  called first thing in `handleIrrigate`/`handleStop`/`handleStatus`. Previously these endpoints
+  had no authentication at all, which was fine while the board was only reachable on the farm's
+  LAN — now that it's going behind a public ngrok tunnel for remote access, an unauthenticated
+  `/irrigate` would let anyone who found the tunnel URL run the pump. Header comment/endpoint
+  docs updated to note the required `key` param. **Not yet reflashed onto the physical board** —
+  the ESP32 wasn't powered on to test this session; the old (unauthenticated) firmware is still
+  running until it's re-uploaded.
+- backend/main.py — added `ESP32_SHARED_SECRET` (env var, matches the firmware's
+  `SHARED_SECRET`), and `call_esp32()` now appends `&key=...`/`?key=...` to every request to the
+  ESP32 so the backend's own calls keep working once the firmware update above is flashed.
+- backend/.env — added `ESP32_SHARED_SECRET`. Also noticed `ESP32_BASE_URL` was stale (pointed
+  at `192.168.61.238`, an old IP from a prior network) — updated to the ESP32's current LAN IP,
+  `192.168.135.238`, and added a comment clarifying this var is for a *locally-run* backend only;
+  the deployed (Render) backend gets its own `ESP32_BASE_URL` pointed at the tunnel instead.
+- render.yaml — added `ESP32_SHARED_SECRET` as a second `sync: false` secret slot alongside the
+  `ESP32_BASE_URL` one added last session, both to be filled in via the Render dashboard.
+- Installed ngrok (the winget package was a stub with no actual binary — downloaded the real
+  Windows build directly instead) and started a **persistent** tunnel — `ngrok http
+  --url=elastic-domestic-paddling.ngrok-free.dev 192.168.135.238:80` — using the user's free
+  reserved static domain, so the public URL stays the same across restarts (unlike a random
+  quick-tunnel URL). Confirmed live via ngrok's local admin API
+  (`http://127.0.0.1:4040/api/tunnels`).
+
+Reason: user wants the mobile app usable remotely by the farmer, including real control of Bed
+1's hardware — not just LAN-local. This is part of a larger in-progress setup (see next steps
+below); this entry covers the tunnel + auth half of it.
+
+Verified: backend `main.py` parses clean (`ast.parse`); ngrok tunnel confirmed live and pointed
+at the right LAN IP via its own API. NOT yet verified end-to-end against real hardware — the
+ESP32 was off this session, and still needs the firmware re-flashed with the auth check before
+the tunnel is safe to leave running long-term.
+
+Still outstanding for full remote access (tracked in this conversation, not yet done):
+  1. Re-flash the ESP32 with the updated .ino (adds the auth check).
+  2. Deploy backend/ to Render (render.yaml is ready; needs a real Render API key or manual
+     dashboard deploy — the key provided this session turned out to be the ngrok token, not
+     Render's).
+  3. Set ESP32_BASE_URL + ESP32_SHARED_SECRET + the other secrets as Render env vars.
+  4. Point the mobile app's default API URL at the deployed Render URL.
+  5. EAS Build a production APK for the farmer to install.
+
+
+## 2026-09-08 — Reverted the #56AB2F rebrand: back to lime
+
+- irrigation-dashboard/src/index.css — `--color-brand` back to `#c7ff2e`, `--color-brand-strong`
+  back to `#a3e635`, `--color-brand-text` back to `#4d7c0f` (light) / `#bef264` (dark),
+  `--color-brand-subtle` back to `#f2ffd6` (light) / `#1f2c12` (dark). Removed the tokens added
+  for the #56AB2F work: `--color-brand-light`, `--gradient-brand`, `--color-brand-ink-muted`.
+  Comment blocks reworded back to "lime" language.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — back to the original neutral-white
+  sidebar (`bg-[var(--color-surface)]`, `--color-border` borders): lime only marks the active
+  nav item (`bg-[var(--color-brand)]`, flat fill, no gradient) and the logo badge; inactive items
+  and labels back to `--color-ink-2`/`--color-muted`/`--color-neutral-bg` hover. Header comment
+  reverted to match.
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx — the hardcoded
+  `"#4d7c0f"` is back (this was pointed at `var(--color-brand-text)` during the #56AB2F work,
+  which is now `#4d7c0f` again anyway, so functionally identical either way — reverted for an
+  exact match to the pre-rebrand file).
+
+Reason: user asked to remove the #56AB2F rebrand (brand colour + solid-green sidebar, both from
+the two entries directly below) and restore the original lime scheme.
+
+Verified: `npx eslint` clean; `npx vite build` succeeds, output matches the original pre-rebrand
+styling with no new warnings/errors.
+
+
+## 2026-09-08 — Sidebar background is now solid #56AB2F
+
+- irrigation-dashboard/src/index.css — added `--color-brand-ink-muted: #1f3312`, a near-black
+  desaturated-green text token for secondary/inactive text on a solid brand-colour surface
+  (verified ~6.8:1 on #56ab2f — a neutral grey like the existing `--color-muted` only clears
+  ~1.6:1 there, so it was unusable for this). Reworded the brand-token comment block to explain
+  the sidebar is a full solid-brand surface again, distinct from the rest of the app where brand
+  stays accent-only.
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — `<aside>` background changed from
+  `bg-[var(--color-surface)]` (white) to `bg-[var(--color-brand)]` (#56ab2f), full solid fill
+  per explicit request (previously only the active nav item + logo badge carried brand colour).
+  Text/border/hover colours reworked to stay legible on that saturated a background: title/active
+  item text → `--color-brand-ink` (black, ~7.3:1), subtitle/group-labels/inactive item text →
+  the new `--color-brand-ink-muted` (~6.8:1), borders → `border-black/10` (the light-grey
+  `--color-border` was essentially invisible on green), active-item and hover states → translucent
+  `bg-black/12` / `bg-black/8` overlays (the light-grey neutral chip used elsewhere read as a
+  washed-out box on a saturated background). Logo badge keeps the `--gradient-brand` fill (brand
+  into its lighter tint) for a little depth against the now-solid surrounding green. Updated the
+  file's header comment accordingly.
+
+Reason: user asked for #56AB2F as the sidebar's actual background colour, not just an accent —
+follow-up to the earlier lime→#56AB2F rebrand + gradient-accent change (see that entry below).
+Clarified scope with the user first (whole-app bg vs sidebar vs topbar); they chose sidebar only.
+
+Verified: `npx eslint` clean; `npx vite build` succeeds with no new warnings/errors. Contrast
+ratios for every new on-brand text/background pairing checked against WCAG AA (4.5:1) by hand
+before landing, per this project's existing accessibility bar.
+
+
+## 2026-09-08 — Web dashboard rebrand: lime → #56AB2F, gradient sidebar accent
+
+- irrigation-dashboard/src/index.css — `--color-brand` changed from the neon-lime `#c7ff2e` to
+  `#56ab2f`. Recomputed the derived tokens for WCAG contrast against the new hue:
+  `--color-brand-strong` (hover/focus-ring variant) → `#469426`; `--color-brand-text` (the
+  as-text-on-white stand-in, since raw brand is only 2.9:1 on white) → `#3f7f23`, now clearing
+  4.5:1 (verified ~4.9:1); `--color-brand-subtle` (light tint bg) → `#e8f5e0`. Dark-theme
+  overrides for `--color-brand-text`/`--color-brand-subtle` repointed to `#8ed17a`/`#16240f` to
+  match. `--color-brand-ink` (#0f0f0f, text/icons on a brand fill) verified unchanged — black
+  still clears AA against both `#56ab2f` (~7.3:1) and the new `--color-brand-light` (~13.5:1).
+  Added `--color-brand-light: #a8e063` and `--gradient-brand: linear-gradient(135deg, #56ab2f,
+  #a8e063)` (new tokens, per the user's explicit two-tone sidebar request). Renamed the "Lime
+  accent tuning" comment section/prose to "Brand accent tuning" (`.bg-brand`/`.text-brand`
+  weren't renamed, just their comments — still the same utility classes).
+- irrigation-dashboard/src/components/layout/Sidebar.jsx — the logo badge and the active nav
+  item's fill both switched from solid `bg-[var(--color-brand)]` to the two-tone
+  `bg-[image:var(--gradient-brand)]`. Left the rest of the sidebar (inactive items, surface)
+  untouched — the prior redesign deliberately confined brand colour to "you are here" rather
+  than a page-scale wash, and that reasoning still holds; only the accent itself is now a
+  gradient instead of a flat fill. Updated the file's header comment accordingly.
+- irrigation-dashboard/src/components/energy/GridChangeoverSimulation.jsx — the one hardcoded
+  hex (`#4d7c0f`, a copy of the old `--color-brand-text` value) now reads `var(--color-brand-text)`
+  instead, so it stays in sync with the token going forward.
+
+Reason: user asked to replace lime with #56AB2F, and to give the sidebar specifically a gradient
+of #56AB2F and #A8E063.
+
+Verified: `npx eslint` clean on all three changed files; `npx vite build` succeeds with no new
+warnings/errors (pre-existing >500kB chunk-size warning only, unrelated).
+
 
 ## 2026-09-07 — irrigation-dashboard: light / dark theme toggle
 
@@ -1972,3 +2812,345 @@ NEXT: the 9 remaining pages, pending user review of this foundation.
 
 Verified: eslint clean, build succeeds, all 53 modules compile through Vite,
 zero legacy colour utilities remain outside index.css. Not verified in a browser.
+
+## 2026-09-21 — Split-panel login screen on the TelOne / Goho Rakangwara brand
+
+- LoginGate.jsx rebuilt to the two-panel reference layout: dark brand panel on
+  the left, form on the right, in one rounded card (max-w 960, min-h 600 at md).
+  The left panel collapses below `md` — at phone width it would consume the
+  whole viewport — and the lockup moves above the form so branding survives.
+- The brand panel uses a FIXED dark gradient in both themes rather than a
+  surface token. public/logo-header.png is glow artwork drawn for a dark ground
+  and it washes out on a light one, so re-pointing it per theme would break it.
+- The lockup is cropped to its content box (aspect 2492/990, object-position
+  center 42%) instead of object-contain. The source PNG is 2492x1936 with the
+  artwork in roughly the top two-thirds, so contain left a dead transparent band
+  under the logo and pushed it high in the panel.
+- Underline inputs replace the boxed ones to match the reference. Real <label>
+  elements above each line, NOT placeholder-as-label — the global
+  :focus-visible outline in index.css is left intact.
+- Primary button stays lime (--color-brand) rather than the reference's navy,
+  so the one primary action still matches the rest of the dashboard.
+
+Behaviour added because the layout calls for the affordances — both are real
+Supabase calls, not decorative links:
+- "Forgot password?" -> resetPasswordForEmail, redirectTo window.location.origin.
+  Response wording is identical whether or not the address exists, preserving
+  the non-enumeration property the sign-in path already had.
+- "Sign up" -> toggles the same form to supabase.auth.signUp. With "Confirm
+  email" still ON, signUp returns no session, so it reports "check your email"
+  and returns to sign-in rather than appearing to do nothing.
+- CAVEAT: both paths depend on SMTP. The project is still on Supabase's
+  built-in sender (~2 emails/hour, not for production), so they will rate-limit
+  until custom SMTP is configured.
+
+- Added a 6s RESTORE_TIMEOUT_MS around the initial getSession(). An unreachable
+  auth host makes supabase-js retry with backoff, which pinned the app on
+  "Restoring session…" indefinitely; a stored session resolves from localStorage
+  well inside 6s, so anything slower is a network fault the form can report.
+
+Verified: eslint clean, Vite HMR applied the module with no compile errors.
+
+The Supabase project had been auto-paused for inactivity (Free Plan pauses after
+~7 days of low activity), which is why the host returned NXDOMAIN and both the
+old and new login screens failed with "Failed to fetch". Resumed from the
+Supabase dashboard — same ref and keys, so no repo changes were needed. After
+the resume, verified from this machine:
+- DNS resolves again (104.18.38.10 / 172.64.149.246)
+- GoTrue v2.197.0 healthy, /auth/v1/.well-known/jwks.json serving 200
+- a bogus sign-in returns invalid_credentials, NOT the "Database error querying
+  schema" that the hand-seeded users hit before — the auth schema came back intact
+- backend on :8021 returns 401 for both a missing and a malformed bearer token
+
+Still not verified: a real sign-in with actual credentials, which needs a
+password I don't have.
+
+## 2026-09-21 — Dashboard: swapped Soil Moisture by Bed / Water Use Today
+
+- Dashboard.jsx only. BedMoisture moves to the full-width slot; WaterUseChart
+  moves into the 2-col grid alongside EnergyPanel. No component changes needed —
+  both are already width-agnostic (h-full + flex-1, chart in a
+  ResponsiveContainer), so the bed rows just get more width and the water chart
+  stretches to match EnergyPanel's row height.
+
+Verified: eslint clean, Vite HMR applied with no compile errors.
+
+## 2026-09-21 — StatusPill: flat, stronger, larger
+
+- StatusPill is app-wide (Dashboard beds + alerts, EnergyPanel, SystemStatusStrip),
+  and the change was made there deliberately rather than as a bed-only variant,
+  so "critical" still looks the same wherever you are.
+- Dropped the bg-* tint from all six tones. The chip's horizontal padding went
+  with it — without a background it only pushed labels out of alignment with the
+  values they sit beside.
+- NEW TOKENS: --color-{ok,warn,danger,info,neutral}-strong, light and dark. The
+  base tones were balanced to sit ON their own lightened backgrounds; read
+  directly against a card they look weaker than the ink next to them. Strong is
+  a step deeper on light, a step BRIGHTER on dark — same hues, no new meaning.
+  Added as tokens rather than hexes in the component so they stay themeable.
+- font-semibold -> font-bold; sizes moved up the shared scale (sm 11px ->
+  text-xs, md text-xs -> text-sm); status dot 6px -> 8px to stay proportionate.
+
+Contrast measured, not assumed — every tone improved and all clear 4.5:1:
+  light, on white:    ok 5.02->7.13  warn 5.02->7.09  danger 4.83->6.47
+                      info 6.70->8.72  neutral 4.76->7.58
+  dark, on #131c2e:   ok 9.77->12.13 warn 10.20->11.81 danger 6.16->8.97
+                      info 6.70->9.44  neutral 6.64->11.47
+
+Verified: eslint clean, production build succeeds (2210 modules), HMR applied.
+
+## 2026-09-21 — Mobile splash redesigned on the Goho Rakangwara lockup
+
+NEW ASSET: mobile-app/assets/images/telone-goho-rakangwara.png
+- Derived from irrigation-dashboard/public/logo-header.png. Alpha-scanned for
+  its true content box (x 32..2465, y 346..1300 of 2492x1936 — 17.9% dead space
+  above, 32.9% below), cropped to it, downscaled to 1000x402. 1406 KB -> 334 KB.
+- Chosen over the existing splash-icon.png because that one is RGB with NO alpha
+  (verified from the PNG header), which is why the old layout needed a white
+  card behind it. This one is transparent, so the card is gone.
+
+CONTENT CHANGE WORTH CONFIRMING: the old lockup read "TelOne Centre for Learning
+| Agri-Intelligence"; this one reads "TelOne Centre for Learning | Goho
+Rakangwara". Swapped because the brief named Goho Rakangwara, but it means the
+app's own name no longer appears in the lockup.
+
+src/app/index.tsx redesigned:
+- Ground stays LIGHT by necessity, not taste. Measured the lockup's ink: mean
+  luminance 109/255 with 62% of opaque pixels below 100. It is dark artwork and
+  would be illegible on the near-black hero background the theme otherwise
+  suggests. Gradient is now a 3-stop vertical white -> #F8FFEC -> #E9FFC4.
+- FIXED A REAL LAYOUT BUG: the wordmark row was flexWrap:'wrap' with one Text
+  per letter at a fixed 34px, so on any phone narrower than ~390pt
+  "AGRI-INTELLIGENCE" broke mid-word at whatever letter ran out of room. Size is
+  now derived from the viewport (0.64em/char, clamped 20–36) and the row is
+  nowrap, so it is always exactly one line.
+- Underline -> a lime rule, moved above the subtitle. Lime as a FILL here, which
+  is the documented correct use; the old near-black hairline wasted the accent.
+- Lockup captioned "IN PARTNERSHIP WITH" over a divider so it reads as a
+  deliberate endorsement rather than a stray image parked at the bottom.
+- Soft lime bloom behind the wordmark: three stacked low-alpha circles, NOT
+  expo-blur, which degrades on react-native-web where the preview runs.
+- Timings resequenced for the new order (rule before subtitle). The constraint
+  that LOCKUP_START must fire BEFORE the auth redirect is preserved and still
+  commented — it starts 1360ms ahead of REDIRECT_AT. Auth/redirect logic itself
+  is untouched.
+
+NOT touched: the native pre-JS splash in app.json still points at
+splash-icon.png. Changing it needs a prebuild, and it is a separate screen.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled in 3.1s with no
+errors. Previewed via Expo web (:8081) in the Mobile View extension.
+
+## 2026-09-21 — Fixed the blank tabs (root cause, not just the symptom)
+
+No page was a stub — every route is fully implemented. The blank screens were a
+runtime state, and the cause was polling ownership:
+
+- startPolling() lived in (tabs)/index.tsx (the Home tab) and stopPolling ran on
+  its unmount. Open any OTHER tab first — a deep link, a notification, or simply
+  the tab you were last on — and `data` stayed null with nothing ever fetching.
+- Home and Crops then hit `if (!data) return null`, which paints a genuinely
+  empty screen. The other five tabs already degraded properly to <LoadingState>.
+  So the bug showed up on exactly the two screens that rendered nothing.
+
+Fixes:
+- (tabs)/_layout.tsx now owns polling for the whole signed-in area. The effect
+  is guarded on isRestoring/isAuthenticated rather than placed after the early
+  returns, because hooks can't be conditional. startPolling() already no-ops
+  when a handle exists, so it is safe against any other caller.
+- (tabs)/index.tsx drops its own polling effect (would have been a second
+  interval) and no longer destructures startPolling/stopPolling.
+- Both `return null` guards -> <LoadingState variant="home"|"crops" />, matching
+  what the other five tabs already did. No screen renders nothing now.
+
+PRE-EXISTING, LEFT ALONE: eslint flags react-hooks/set-state-in-effect on the
+`slowLoad` effect in (tabs)/index.tsx. Confirmed present before this change by
+stashing and re-linting (same error, line 70 -> 67 after the 3-line removal).
+Unrelated to the blank-page bug, so not touched.
+
+Verified: tsc --noEmit clean, Metro rebundled with no errors.
+
+## 2026-09-21 — More section: Reports, Data Export, Help, About; Language removed
+
+The real "empty pages": the More menu had three notReady() stubs (Reports,
+User Management, Data Export) and three rows — Language, Help & Support, About —
+that all pushed to /more/settings, so four menu entries led somewhere wrong.
+
+NEW src/lib/exportData.ts
+- RFC 4180 CSV builder (quotes only cells containing a comma/quote/newline) for
+  four datasets: beds, water, energy, alerts.
+- Delivery is per-platform because expo-file-system and expo-sharing are NOT
+  dependencies, so no real file can be written on device: web gets a Blob +
+  synthetic <a download> (a genuine file save, and what the Mobile View preview
+  exercises); native gets Share.share({ message }) into the OS share sheet.
+  Documented in the file as the point to add those deps if a real on-device
+  .csv is ever needed, rather than working around it further.
+
+NEW more/reports.tsx — season report built ENTIRELY from the dashboard payload
+the app already polls. No new endpoint, so its figures can never disagree with
+Home. Water/runs/efficiency/crop-health metrics, weekly bar chart, per-bed
+breakdown with totals and averages computed client-side, energy summary, and a
+CTA through to Data Export.
+
+NEW more/export.tsx — one row per dataset with live row counts; rows with zero
+records disable themselves rather than exporting an empty file. Platform-aware
+copy explains what actually happens (download vs share sheet).
+
+NEW more/help.tsx — collapsible FAQ written against this system's REAL failure
+modes, not filler: the ~30-60s Render cold start, VWC judged per-crop, a failed
+irrigate meaning the command never reached the ESP32, the offline banner meaning
+"can't reach the backend" not "phone offline", Bed 1 real vs Beds 2-3 simulated,
+and the confidence-score caveat on photo diagnosis. Plus force-refresh, a
+pointer to the Backend Server setting, and mailto with a canOpenURL guard so a
+device with no mail client says so instead of failing silently.
+
+NEW more/about.tsx — the five project objectives from PROJECT-OBJECTIVES.md as
+capability cards. Objective 1 (automatic irrigation) is labelled "In development"
+because it genuinely is not built — no probes wired, firmware runs manual cycles
+only — rather than being presented as working. Also a plain-language statement
+of the problem the project solves, a 4-step architecture flow, the TelOne / Goho
+Rakangwara lockup, and live version info (app/backend/firmware/node count).
+
+more/index.tsx — Language row REMOVED (it pushed to Settings, which has no
+language control); Reports/Data Export/Help/About now point at the real routes.
+User Management left on notReady() — not in scope for this request.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.
+
+## 2026-09-21 — Splash redesigned again: deep green, botanical mark, simplified
+
+Replaces the light editorial splash from earlier today with the simpler
+reference layout: botanical mark on a deep green ground, wordmark, one action,
+institutional lockup.
+
+- Letter-by-letter wordmark reveal REMOVED. The brief asked for the simpler
+  layout, so the whole wordmark now fades and rises as one. The responsive
+  one-line sizing that fix depended on is no longer needed (the title is short),
+  but the wrap bug it fixed cannot return either. Sequence is ~2.6s, down from
+  ~3.5s.
+- Hero is agri-logo-mark.png (the leaf/circuit tree), sized off the viewport.
+
+MEASURED, NOT GUESSED — two contrast constraints shaped the screen:
+1. agri-logo-mark.png is BIMODAL: 36% of its opaque pixels are dark circuit
+   trace (min luminance 44/255), 53% are bright leaf. Against the deep green the
+   reference uses, the trace measures:
+     #0F5132 -> 1.02:1     #14532D -> 1.04:1     #0B3D24 -> 1.29:1
+   i.e. invisible — the mark would degrade to disconnected floating leaves and
+   lose the circuitry that carries its meaning. The Bloom (stacked low-alpha
+   #9BE86A circles) is therefore structural, not decorative: it lifts the ground
+   locally to ~2.2:1 so the traces still read. Leaves are 5-6.6:1 regardless.
+2. The TelOne / Goho Rakangwara lockup is dark ink (mean luminance 109/255) and
+   cannot go on the green at all, so it keeps a white plate. Same reason the
+   pre-redesign code had one.
+
+- StatusBar style="light" added — the ground is now dark.
+- Auth/redirect logic untouched, including LOCKUP_START firing before
+  REDIRECT_AT (leads it by 1500ms).
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.
+
+## 2026-09-21 — Splash: lockup to the top, knockout, glow removed
+
+Brief: TelOne lockup at the top, "embedded well", remove the circles.
+
+Embedding a DARK-ink logo on a dark green ground is not a layout problem, so
+both logos got generated dark-ground variants rather than runtime tinting:
+
+NEW assets/images/telone-goho-rakangwara-mono.png (118 KB)
+- White knockout of the lockup (every opaque pixel -> #FFFFFF, alpha kept).
+- Replaces the white PLATE the colour version needed. A plate is what made it
+  read as pasted on; a knockout sits straight on the gradient with nothing
+  behind it. Checked composited on #0E4A2E before committing to it: the sphere
+  in "TelOne" flattens to a solid disc but still scans as the O.
+- TRADE-OFF: the blue wordmark / red strapline / green tree are gone. If the
+  institution requires full colour, revert to the colour asset + plate.
+
+NEW assets/images/agri-logo-mark-ondark.png (241 KB)
+- The leaf mark with only its DARK circuit traces (luminance < 110) recoloured
+  to brand lime #C7FF2E. Leaves untouched, so the green gradient survives.
+- This is what let the glow go. The traces measured 1.02:1 on this green and
+  the stacked circles existed solely to lift them locally; recolouring fixes the
+  cause, so "remove the circles" costs nothing. Traces now read at full strength
+  with no compensating device.
+
+src/app/index.tsx
+- Lockup moved to the top and now OPENS the animation (150ms) instead of closing
+  it. That also retires the old constraint about it having to start before the
+  auth redirect — it leads REDIRECT_AT by ~2.5s.
+- Bloom component deleted entirely.
+- Sequence: lockup -> mark -> title -> tagline -> button, ~2.6s total.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.
+
+## 2026-09-21 — Splash lockup back to full colour, matching the dashboard
+
+The white knockout was rejected ("logo is not visible, make like the dashboard").
+Re-examined with actual composites instead of a mean-luminance figure:
+
+- The colour lockup on the dashboard's navy (#0A1733) reads well — blue
+  "TelOne", red strapline and the leaf gradients all pop. The earlier
+  "mean luminance 109/255, needs a light ground" conclusion was TOO COARSE:
+  the mean is dragged down by the dark-green elements, but the blue and red
+  ink is bright and the leaves are bright. Only the dark-green ink was ever
+  the problem.
+- On the splash green (#0E4A2E) the SAME colour lockup reads except for exactly
+  those dark-green parts: the "Goho Rakangwara" wordmark and the tree's circuit
+  traces, which are the same hue as the ground and disappear into it.
+
+NEW assets/images/telone-goho-rakangwara-ondark.png (291 KB)
+- Full-colour lockup with ONLY dark, green-dominant ink (luminance < 115 and
+  G >= R, G >= B) recoloured to #A3E635. 23,112 px changed. Blue, red and the
+  leaf gradients are pixel-identical to the original. Composited on the splash
+  green and checked before committing.
+- telone-goho-rakangwara-mono.png DELETED — unused, no references remain.
+
+src/app/index.tsx points at the -ondark asset; header comment corrected.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.
+
+## 2026-09-21 — Tab bar redesigned: white pill, expanding lime active item
+
+NEW src/components/layout/PillTabBar.tsx — custom tabBar for expo-router Tabs.
+- The reference is text-only with four entries. Six text labels do not fit a
+  phone width, so this is the standard expanding-pill adaptation: the ACTIVE
+  tab widens into a lime (Colors.primary) capsule with icon + label + optional
+  count badge (dark disc, white number); every other tab is icon-only. Inactive
+  items flex:1, the active one flexShrink:0 with padding, so it reads as a
+  capsule rather than a column.
+- Solid white, no BlurView. The reference is opaque, and the blur was the one
+  element of the old bar that degraded on react-native-web (the preview target).
+- Props typed as Parameters<ComponentProps<typeof Tabs>['tabBar']>[0] — derived
+  from expo-router's public Tabs — because @react-navigation/bottom-tabs is not
+  a direct dependency and only exists under a deep expo-router/build path.
+- Emits tabPress / tabLongPress and honours defaultPrevented, so any screen-level
+  listener keeps working; a11y role/state/label set per item.
+
+(tabs)/_layout.tsx
+- Old TabBarBackground / TabIcon / per-screen tabBarIcon removed; the layout now
+  only declares which tabs exist plus an icon+badge `meta` map.
+- Badge: unseen alerts on Home (alerts.length minus alertsSeenStore.seenIds).
+  Home is where the bell lives, and the Alerts screen already calls markSeen on
+  open, so the count clears itself without new plumbing.
+- Polling ownership and the auth gate are unchanged from earlier today.
+
+Spacing.huge (140) still clears the bar: new height is 48 + 12 padding = 60,
+bottom offset max(safe-area, 16) — smaller than the 64 + 24 it was sized for.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.
+
+## 2026-09-21 — Tab bar: reverted to the glass bar, now anchored not floating
+
+- (tabs)/_layout.tsx back to the BlurView + raised-capsule design (icon-only,
+  active icon in a white capsule with a lime border). PillTabBar.tsx DELETED.
+  The polling-ownership fix and auth gate from earlier today are retained.
+- No longer position:absolute. Full width, hairline top border, no pill radius.
+  Height is BAR_HEIGHT (64) + safe-area bottom inset, with the inset as
+  paddingBottom, so the 44px capsules are never squeezed on devices with a home
+  indicator.
+
+CONSEQUENCE HANDLED: Spacing.huge 140 -> 32. That token exists solely so scroll
+views clear the OLD floating bar. An anchored bar takes its own layout space,
+so 140 would have left a dead 108px gap at the bottom of all 14 screens that
+use it. Token value changed in one place; name kept so no call site churns.
+
+Verified: tsc --noEmit clean, eslint clean, Metro rebundled with no errors.

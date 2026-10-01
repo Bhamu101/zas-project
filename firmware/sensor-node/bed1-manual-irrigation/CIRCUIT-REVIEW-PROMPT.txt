@@ -1,0 +1,88 @@
+PROMPT — Bed 1 Irrigation Pump-Drive Circuit Review
+=====================================================
+(Paste this whole thing into another AI/chatbot for a second opinion.)
+
+I need help diagnosing a low-voltage DC control circuit for a solar-powered
+drip irrigation system. Act as an electronics engineer reviewing my wiring
+and multimeter readings to find the fault.
+
+SYSTEM CONTEXT
+--------------
+An ESP32 microcontroller drives a 12V DC water pump and a 12V solenoid
+valve for one irrigation bed. The pump draws too much current (~15A) for
+the ESP32 to switch directly, so a 2N2222 NPN transistor is used as a
+low-side pilot switch to energize a 12V automotive relay's coil, and that
+relay's high-current contacts carry the actual pump power. The valve is on
+a separate, standard 2-channel 5V relay module (unrelated to the fault,
+included for completeness).
+
+PARTS IN THIS CIRCUIT
+----------------------
+- ESP32 DevKit (GPIO18 drives the pump circuit, 3.3V logic)
+- 1x 2N2222 NPN transistor (TO-92 package)
+- 1x 220 ohm resistor (base current limiting)
+- 1x 1N4007 diode (flyback protection across the relay coil)
+- 1x automotive relay, 12V coil, rated >=30A contacts, standard 5-pin
+  (30 = common/power-in, 87 = normally-open output, 87a = normally-closed,
+  unpopulated on this specific relay, 85/86 = coil)
+- 1x DC submersible pump, 12V, ~15A draw
+- 1x fused +12V DC bus (20A inline fuse), from a 12V battery
+
+INTENDED WIRING
+----------------
+ESP32 GPIO18 -> 220 ohm resistor -> 2N2222 Base
+2N2222 Emitter -> common ground
+2N2222 Collector -> relay pin 85 (coil "-" / low side)
+Relay pin 86 (coil "+") -> fused +12V bus (this leg is ALWAYS live,
+  independent of the transistor)
+1N4007 flyback diode across the coil: cathode (banded end) -> pin 86,
+  anode -> pin 85 / Collector junction
+Relay pin 30 (high-current input) -> fused +12V bus (separate wire from
+  pin 86, same bus)
+Relay pin 87 (switched output) -> pump red (+) lead
+Pump blue (-) lead -> common ground
+
+Firmware logic: GPIO18 HIGH should saturate the transistor, pulling the
+collector (and therefore relay pin 85) down toward 0V, which creates
+~12V across the coil (pin 86 minus pin 85) and energizes the relay,
+closing the connection between pin 30 and pin 87 to power the pump.
+GPIO18 LOW should leave the transistor fully off, so no current flows
+through the coil at all.
+
+SYMPTOM
+-------
+When triggered, the relay makes an audible click, but the pump never
+actually runs. Voltage checks with a multimeter, referenced to common
+ground unless noted:
+
+- Idle (GPIO18 LOW, not triggered):
+  - Relay pin 86 to ground: 12.9V (matches the fused bus, as expected)
+  - Relay pin 85 to ground: 6.0V (expected: should be close to 12.9V too,
+    since with the transistor fully off there should be no current
+    through the coil and therefore no voltage drop across it)
+  - Between pin 85 and pin 86 directly: 5.6V drop
+- Triggered (GPIO18 HIGH, cycle running):
+  - Relay pin 30 to ground: 12V (correct, bus power present)
+  - Relay pin 87 to ground: 0V (expected: should read close to 12V,
+    since the relay should be switching pin 30's power through to pin 87)
+
+So: pin 86 has correct bus voltage, pin 30 has correct bus voltage, but
+the relay never actually switches pin 30 through to pin 87, and there's
+clearly a live current path through the coil even when the transistor
+should be off (the 85-86 voltage drop at idle).
+
+WHAT I NEED FROM YOU
+---------------------
+1. Given these exact readings, what is the most likely root cause? (My own
+   working theory: either the 2N2222 or the 1N4007 has its physical legs
+   swapped from the intended wiring above -- e.g. Base/Collector/Emitter
+   mixed up, since TO-92 pinout varies by manufacturer and I did not
+   verify the actual part against its datasheet before wiring it; or the
+   diode is reversed, which — backwards — creates a leakage/short path
+   across the coil instead of protecting it. Tell me if you agree, disagree,
+   or see another explanation I'm missing.)
+2. What specific multimeter tests (in diode-test mode, with the components
+   isolated/unpowered) would confirm which component is actually at fault,
+   and how do I read the results?
+3. Is there anything else in the "intended wiring" above that looks wrong
+   or risky, independent of this specific symptom?

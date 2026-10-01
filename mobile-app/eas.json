@@ -8,10 +8,20 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zas-irrigation-api-nmzs.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ewseaaucyujohlepufpo.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_z8jTS24P8E8lGZCMpFKItQ_2MgbOKx8"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zas-irrigation-api-nmzs.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://ewseaaucyujohlepufpo.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_z8jTS24P8E8lGZCMpFKItQ_2MgbOKx8"
+      }
     }
   },
   "submit": {

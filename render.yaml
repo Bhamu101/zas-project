@@ -28,9 +28,22 @@ services:
       - key: TWILIO_WHATSAPP_TO
         sync: false
       # Bed 1's ESP32 lives on the farm's local WiFi, not the public internet —
-      # this deployed backend can't reach a LAN IP directly. Point this at a
-      # persistent public tunnel to the ESP32 instead (see CHANGED_FILES.txt /
-      # PROJECT_CONTEXT.md for the ngrok reserved-domain setup). Leave unset to
-      # keep Bed 1 simulated like the other beds until that tunnel is running.
+      # this deployed backend can't reach a LAN IP directly. Point this at the
+      # persistent ngrok tunnel to the ESP32 instead (see CHANGED_FILES.txt for
+      # the reserved-domain setup). Leave unset to keep Bed 1 simulated like
+      # the other beds until that tunnel is running.
       - key: ESP32_BASE_URL
+        sync: false
+      # Must match SHARED_SECRET in firmware/sensor-node/bed1-manual-irrigation/
+      # exactly — the ESP32 rejects any request missing/wrong on this once it's
+      # behind a public tunnel rather than LAN-only.
+      - key: ESP32_SHARED_SECRET
+        sync: false
+      # Bed camera (backend/camera.py). Must match SHARED_SECRET in
+      # firmware/camera-node/bed1-camera/bed1-camera.ino.
+      - key: CAMERA_SHARED_SECRET
+        sync: false
+      # Supabase service-role key: the only thing that can read/write the
+      # private `bed-camera` Storage bucket. Secret — server-side only.
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false

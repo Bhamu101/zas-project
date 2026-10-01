@@ -1,4 +1,4 @@
-# ZAS Project — Context Document
+# Agri-Intelligence Project — Context Document
 
 Status: living reference, generated 2026-09-03 from the codebase + `CHANGED_FILES.txt` history.
 Companion to [`PROJECT-OBJECTIVES.md`](PROJECT-OBJECTIVES.md) (the "why"/scope doc) — this file is
@@ -9,7 +9,7 @@ the "what exists and how it fits together" doc. Update both as things change.
 ## 1. What this is
 
 **Smart Energy-Driven Irrigation for Agricultural Value Chains** — a solar-powered, sensor-driven,
-per-bed drip irrigation system for a small farm in Norton, Zimbabwe, built for the ZAS 2026
+per-bed drip irrigation system for a small farm in Norton, Zimbabwe, built for the Agri-Intelligence 2026
 exhibition. Three deliverables share one backend and one live data model:
 
 1. **`irrigation-dashboard/`** — React/Vite web dashboard, "Goho Rakangwara" brand, kiosk display.
@@ -28,9 +28,10 @@ ZAS PROJECT/
 ├── firmware/sensor-node/   ESP32 .ino sketch + wiring docs (bring-up stage)
 ├── iriigation/             PLC project files (.plcprj/.imgx/.wkpx) — exploratory, unclear if active
 ├── claude-android-skill/   installed Claude Code skill package, not project source
-├── render.yaml             Render Blueprint to deploy backend/ as a free web service
-├── PROJECT-OBJECTIVES.md   scope/design decisions, source of truth for "why"
-└── CHANGED_FILES.txt       running log of every feature/task, newest first
+├── design-canvas/          Claude Design canvas scratch files (git-ignored)
+├── docs/                   project docs: PROJECT-OBJECTIVES.md (scope/"why"), this file,
+│                           CHANGED_FILES.txt (running log, newest first), architecture docs/PDFs
+└── render.yaml             Render Blueprint to deploy backend/ as a free web service
 ```
 
 ## 3. Backend (`backend/main.py`)
@@ -82,10 +83,6 @@ ZAS PROJECT/
     "Estimated" were deliberately removed once the simulations became internally consistent
     (`src/lib/energySimulation.js` is the single shared source of truth for the ATS/recommendation
     logic so cards never disagree with each other).
-  - A full "Solar Tracker Digital Twin" (3D-ish SVG scene, timeline scrubber, exhibition mode) was
-    built, then **entirely removed** per user request in favor of a simpler `SolarTrackerCard`
-    preview — if you see references to `TrackerScene`/`digital-twin/` in history, that's dead code
-    already deleted, not something to resurrect.
   - A "Live Simulation" page was built and then fully reverted same-session (net zero diff) —
     documented in `CHANGED_FILES.txt` in case it resurfaces as a request.
   - Irrigation Control's "Trigger Irrigation Now" is a **client-side** gradual sim (no backend
@@ -135,11 +132,7 @@ Full design rationale lives in `PROJECT-OBJECTIVES.md` — summary of current st
   **Status: designed, not built.** `firmware/sensor-node/sensor-node.ino` + `WIRING.md`/`WIRING.pdf`
   cover ESP32 bring-up and sensor wiring; the valve/relay/pump automation logic described in the
   objectives doc has not been written yet.
-- **Solar tracker (new, planned):** single-axis E-W sweep, hybrid LDR (primary) + astronomical
-  fallback (needs an RTC or NTP for sun-position calc). **Status: design locked, nothing built** —
-  no firmware, no hardware BOM finalized, no dashboard fields exist for real tracker telemetry
-  (the dashboard's `SolarTrackerCard` is an illustrative preview, not live data).
-- **Power resilience:** 60W solar + LiFePO4 12V 20Ah battery, ATS fails over to grid (simulated via
+- **Power resilience:** 50W solar + 12V battery, ATS fails over to grid (simulated via
   a 12V adapter for the demo).
 - **`iriigation/` folder** (note the filename typo) holds `.plcprj`/`.imgx`/`.wkpx` files — looks
   like an earlier PLC/ladder-logic exploration, unclear if still relevant to the current
@@ -163,8 +156,7 @@ Full design rationale lives in `PROJECT-OBJECTIVES.md` — summary of current st
   `.gitignore` excludes installed tool/skill packages (`.agents/`, `.claude/skills/`,
   `claude-android-skill/`) as non-project-source content.
 - **`CHANGED_FILES.txt`** is the authoritative day-by-day history with rationale for *why* things
-  were built, reverted, or renamed (e.g. the Dreamstime-watermarked GIF that was rejected in favor
-  of an original solar-tracker illustration) — check it before assuming something is missing or
+  were built, reverted, or renamed — check it before assuming something is missing or
   before redoing work that was deliberately undone.
 
 ## 8. Open threads / likely next work
@@ -172,7 +164,6 @@ Full design rationale lives in `PROJECT-OBJECTIVES.md` — summary of current st
 From `PROJECT-OBJECTIVES.md`'s "Not Yet Objectives" plus gaps noted above:
 
 - Wire the ESP32 sensor node's valve/relay/pump automation logic (design is locked, code isn't written).
-- Build and wire the solar tracker (hardware + firmware + real dashboard telemetry fields).
 - Backend persistence (SQLite) and a live MQTT/ESP32 data feed to replace the in-memory mock state.
 - Deploy the Render backend for real and run `eas build` for a distributable mobile `.apk`.
 - Confirm whether `iriigation/` (PLC project) is still relevant or safe to remove.

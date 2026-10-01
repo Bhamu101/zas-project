@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import time
 from datetime import datetime
 
 import requests
@@ -10,6 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from auth import require_user
+from camera import request_capture, router as camera_router, set_health_alert_hook
+from diagnosis import diagnose_image
 from google import genai
 from google.genai import errors as genai_errors
 from twilio.rest import Client as TwilioClient
@@ -17,15 +20,20 @@ from twilio.base.exceptions import TwilioRestException
 
 load_dotenv()
 
-# Bed 1's ESP32 node (firmware/sensor-node/bed1-manual-irrigation.ino) exposes a
-# tiny HTTP API (/irrigate?sec=N, /stop) on the local network. Unset by default
-# so the demo keeps working with simulated moisture bumps when no hardware is
-# wired up yet; set ESP32_BASE_URL in backend/.env (e.g. http://192.168.1.42 or
-# http://irrigation.local, if mDNS resolves from wherever this backend runs)
-# once Bed 1's pump/valve are actually flashed and on the same network as this
-# process. Only Bed 1 has real hardware so far — Beds 2/3 stay simulated.
+# Bed 1's ESP32 node (firmware/sensor-node/bed1-manual-irrigation/) exposes a
+# tiny HTTP API (/irrigate?sec=N, /stop, /status) — either on the local network
+# directly, or through a public tunnel now that this backend can be deployed
+# off-LAN (see the remote-access setup in CHANGED_FILES.txt / the wiring doc).
+# Unset by default so the demo keeps working with simulated moisture bumps
+# when no hardware is wired up yet. Only Bed 1 has real hardware so far — Beds
+# 2/3 stay simulated.
 ESP32_BASE_URL = os.environ.get("ESP32_BASE_URL", "").rstrip("/")
 ESP32_HARDWARE_BED_ID = 1
+# Must match SHARED_SECRET in the .ino. The endpoints are unauthenticated
+# otherwise, which was fine when they were only reachable on the farm's LAN —
+# once tunneled to the public internet, this is what stops a stranger who
+# finds the tunnel URL from running the pump.
+ESP32_SHARED_SECRET = os.environ.get("ESP32_SHARED_SECRET", "")
 
 
 def call_esp32(path: str, timeout: float = 5.0) -> None:
@@ -34,7 +42,8 @@ def call_esp32(path: str, timeout: float = 5.0) -> None:
     didn't actually respond, the caller needs to know instead of the app showing
     "irrigating" while nothing is happening in the field.
     """
-    url = f"{ESP32_BASE_URL}{path}"
+    separator = "&" if "?" in path else "?"
+    url = f"{ESP32_BASE_URL}{path}{separator}key={ESP32_SHARED_SECRET}"
     try:
         response = requests.get(url, timeout=timeout)
         response.raise_for_status()
@@ -44,7 +53,120 @@ def call_esp32(path: str, timeout: float = 5.0) -> None:
             detail=f"Could not reach Bed 1's ESP32 at {ESP32_BASE_URL}: {e}",
         )
 
+
+def get_esp32_status(timeout: float = 2.5):
+    """Best-effort read of the node's /status. Returns the parsed JSON or None.
+
+    Unlike call_esp32 this never raises: the dashboard must keep rendering when
+    the node is off or the tunnel is down — it just shows the last-known values
+    and flags the probe offline.
+    """
+    if not ESP32_BASE_URL:
+        return None
+    url = f"{ESP32_BASE_URL}/status?key={ESP32_SHARED_SECRET}"
+    try:
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+
+# The dashboard and the mobile app both poll /api/dashboard every few seconds,
+# and there can be several clients open at once. The ESP32's single-threaded
+# WebServer doesn't like being hit that often, so /status is fetched at most
+# once per ESP32_POLL_SECONDS and the result is reused in between.
+ESP32_POLL_SECONDS = 4
+_esp32_last_poll = 0.0
+_esp32_online = False
+_esp32_prev_state = "idle"
+
+
+def sync_bed1_from_esp32() -> None:
+    """Overwrite Bed 1's simulated numbers with the node's real probe + pump state.
+
+    No-op unless ESP32_BASE_URL is set, so the demo keeps its simulated Bed 1
+    when no hardware is wired up. When the node runs the auto-irrigation sketch,
+    the ESP32 decides on its own to water (it holds the same Covo thresholds as
+    CROP_TARGETS); this is where the backend notices that and logs it, so an
+    automatic cycle shows up in Recent Activity the same way a manual one does.
+    """
+    global _esp32_last_poll, _esp32_online, _esp32_prev_state
+    global _next_activity_id
+
+    if not ESP32_BASE_URL:
+        return
+
+    now = time.monotonic()
+    if now - _esp32_last_poll < ESP32_POLL_SECONDS:
+        return
+    _esp32_last_poll = now
+
+    status = get_esp32_status()
+    _esp32_online = status is not None
+    if status is None:
+        return
+
+    bed = next((b for b in BEDS if b["id"] == ESP32_HARDWARE_BED_ID), None)
+    if bed is None:
+        return
+
+    # --- soil probe ---------------------------------------------------------
+    # Only the auto-irrigation sketch reports vwc; the manual sketch's /status
+    # has just {state, remainingSec}, in which case Bed 1 keeps its stored vwc.
+    if status.get("sensorOk") and "vwc" in status:
+        vwc = int(status["vwc"])
+        if vwc != bed["vwc"]:
+            bed["vwc"] = vwc
+            bed["trendVwc"] = (bed.get("trendVwc", []) + [vwc])[-9:]
+        bed["state"] = bed_state(bed)
+        bed["sensorOk"] = True
+    elif "sensorOk" in status:
+        bed["sensorOk"] = False
+
+    # --- pump / valve -------------------------------------------------------
+    node_state = status.get("state", "idle")
+    running = node_state in ("opening", "running", "closing", "manual_pump")
+    bed["pumpStatus"] = "ON" if node_state in ("running", "manual_pump") else "OFF"
+    bed["valveStatus"] = "OPEN" if node_state in ("opening", "running", "closing") else "CLOSED"
+    bed["irrigating"] = running
+    bed["cycleType"] = status.get("cycleType", "manual" if running else "none")
+    bed["autoMode"] = bool(status.get("auto", False))
+    bed["remainingSec"] = int(status.get("remainingSec", 0))
+
+    # --- activity log for cycles the node started itself --------------------
+    started = _esp32_prev_state == "idle" and node_state == "opening"
+    finished = _esp32_prev_state != "idle" and node_state == "idle"
+    _esp32_prev_state = node_state
+
+    if started and bed["cycleType"] == "auto":
+        bed["lastIrrigation"] = "Just now"
+        BED_ACTIVITY.insert(0, {
+            "id": _next_activity_id,
+            "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+            "title": f"Automatic irrigation started — {bed['name']}",
+            "subtitle": f"Soil moisture {bed['vwc']}% below {bed['vwcTrigger']}% trigger",
+            "color": "red",
+        })
+        _next_activity_id += 1
+        send_whatsapp_alert(
+            f"💧 {bed['name']} dropped to {bed['vwc']}% VWC — automatic irrigation started."
+        )
+    elif finished:
+        bed["lastIrrigation"] = "Just now"
+        BED_ACTIVITY.insert(0, {
+            "id": _next_activity_id,
+            "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+            "title": f"Irrigation complete — {bed['name']}",
+            "subtitle": f"Soil moisture now {bed['vwc']}% ({bed['state']})",
+            "color": "brand",
+        })
+        _next_activity_id += 1
+        # Photograph the bed after every cycle, so the history shows the result.
+        request_capture(ESP32_HARDWARE_BED_ID, "irrigation")
+
 app = FastAPI(title="Smart Irrigation API")
+app.include_router(camera_router)
 
 # CORS only constrains *browsers*. Native mobile fetch sends no Origin and is
 # unaffected either way, so this list only needs to cover the web dashboard and
@@ -158,6 +280,33 @@ BED_ACTIVITY = [
 ]
 
 _next_activity_id = max(a["id"] for a in BED_ACTIVITY) + 1
+
+
+def _on_bed_health_issue(bed_id: int, record: dict) -> None:
+    """The bed camera's AI check found a moderate/high problem (camera.py)."""
+    global _next_activity_id
+    bed = next((b for b in BEDS if b["id"] == bed_id), None)
+    name = bed["name"] if bed else f"Bed {bed_id}"
+    condition = record.get("condition") or "a possible problem"
+    BED_ACTIVITY.insert(0, {
+        "id": _next_activity_id,
+        "time": datetime.now().strftime("%I:%M %p").lstrip("0"),
+        "title": f"Camera check: {condition} — {name}",
+        "subtitle": f"{str(record.get('severity', '')).capitalize()} severity, "
+                    f"{record.get('confidencePct', '?')}% confidence",
+        "color": "red",
+    })
+    _next_activity_id += 1
+    send_whatsapp_alert(
+        f"🌿 {name} camera check: {condition} ({record.get('severity')} severity). "
+        f"{record.get('treatment', '')}".strip()
+    )
+
+
+set_health_alert_hook(
+    _on_bed_health_issue,
+    lambda bed_id: next((b["crop"] for b in BEDS if b["id"] == bed_id), None),
+)
 
 # ---------------------------------------------------------------------------
 # System settings
@@ -371,11 +520,21 @@ def root():
 
 @app.get("/api/dashboard", dependencies=[Depends(require_user)])
 def get_dashboard():
+    sync_bed1_from_esp32()
+
+    bed1 = next(b for b in BEDS if b["id"] == ESP32_HARDWARE_BED_ID)
+    any_critical = any(b["state"] == "critical" for b in BEDS)
+    any_irrigating = any(b["irrigating"] for b in BEDS)
+    soil_avg = round(sum(b["vwc"] for b in BEDS) / len(BEDS))
+
     return {
         "systemStatus": {
-            "mode": "AUTOMATIC",
-            "status": "OPTIMAL",
-            "lastUpdated": "10:30:25 AM",
+            # Mode follows the node's auto flag once real hardware is attached;
+            # without it the demo stays in its simulated AUTOMATIC mode.
+            "mode": "AUTOMATIC" if bed1.get("autoMode", True) else "MANUAL",
+            "status": "IRRIGATING" if any_irrigating else ("ATTENTION" if any_critical else "OPTIMAL"),
+            "lastUpdated": datetime.now().strftime("%I:%M:%S %p").lstrip("0"),
+            "esp32Online": _esp32_online if ESP32_BASE_URL else None,
         },
         "beds": BEDS,
         "bedActivity": BED_ACTIVITY,
@@ -395,8 +554,8 @@ def get_dashboard():
             },
         },
         "kpis": {
-            "soilMoistureAvg": 36,
-            "irrigationStatus": "Running",
+            "soilMoistureAvg": soil_avg,
+            "irrigationStatus": "Running" if any_irrigating else "Idle",
             "nextCycle": "02:15:30",
             "cycleProgressPct": 62,
             "energySource": "Solar",
@@ -671,6 +830,10 @@ def start_irrigation(bed_id: int, req: StartIrrigationRequest):
     bed["valveStatus"] = "OPEN"
     bed["irrigating"] = True
     bed["durationMin"] = duration_min
+    # Seed the countdown so the dashboard's cycle bar starts at 0% right away;
+    # for Bed 1 the next ESP32 poll replaces it with the node's own figure.
+    bed["cycleType"] = "manual"
+    bed["remainingSec"] = duration_min * 60
 
     BED_ACTIVITY.insert(0, {
         "id": _next_activity_id,
@@ -705,16 +868,23 @@ def stop_irrigation(bed_id: int):
     if was_irrigating and ESP32_BASE_URL and bed_id == ESP32_HARDWARE_BED_ID:
         call_esp32("/stop")
 
-    if was_irrigating:
+    # The simulated moisture bump only applies to beds without a real probe:
+    # Bed 1 on the auto sketch reports its own vwc, which the next dashboard
+    # poll picks up via sync_bed1_from_esp32().
+    has_real_probe = bed.get("sensorOk") is True
+    if was_irrigating and not has_real_probe:
         bed["vwc"] = min(100, bed["vwc"] + 22)
         bed["state"] = bed_state(bed)
-        bed["lastIrrigation"] = "Just now"
         bed["trendVwc"] = (bed.get("trendVwc", []) + [bed["vwc"]])[-9:]
+    if was_irrigating:
+        bed["lastIrrigation"] = "Just now"
         bed["waterUsedL"] += bed["durationMin"] * 35
 
     bed["pumpStatus"] = "OFF"
     bed["valveStatus"] = "CLOSED"
     bed["irrigating"] = False
+    bed["cycleType"] = "none"
+    bed["remainingSec"] = 0
 
     if was_irrigating:
         BED_ACTIVITY.insert(0, {
@@ -725,6 +895,7 @@ def stop_irrigation(bed_id: int):
             "color": "brand",
         })
         _next_activity_id += 1
+        request_capture(bed_id, "irrigation")
 
         send_whatsapp_alert(
             f"💧 Irrigation complete for {bed['name']}: soil moisture raised from "
@@ -939,61 +1110,5 @@ def diagnose_crop_health(req: CropHealthRequest):
             detail=f"Image is too large (max {MAX_IMAGE_BYTES // (1024 * 1024)} MB).",
         )
 
-    crop_hint = f" The farmer says this is a {req.cropName} plant." if req.cropName else ""
-    system_prompt = (
-        "You are a plant pathologist assisting smallholder farmers in Zimbabwe. A farmer has "
-        "photographed a plant (leaf, stem, or whole plant) with their phone and wants to know if "
-        "it's healthy, and if not, what's wrong and what to do about it." + crop_hint + " "
-        "Look carefully at the image and respond with ONLY a JSON object (no markdown, no code "
-        "fences) matching exactly this shape:\n"
-        '{"plantIdentified": string, "healthStatus": "healthy" | "diseased" | "pest" | '
-        '"nutrient_deficiency" | "unclear", "condition": string, "confidencePct": number, '
-        '"severity": "none" | "low" | "moderate" | "high", "description": string, '
-        '"treatment": string, "preventionTips": string}\n\n'
-        "plantIdentified: your best guess at the plant/crop shown. condition: the specific "
-        'disease/pest/deficiency name, or "Healthy" if nothing is wrong. description: 1-2 plain '
-        "sentences on what you actually observe in the image (spots, discoloration, wilting, "
-        "insects, etc.) and why it points to that condition. treatment: concrete, actionable steps "
-        "a smallholder farmer can take, favoring low-cost/organic options where reasonable. "
-        "preventionTips: 1 sentence on avoiding this going forward. If the image doesn't clearly "
-        'show a plant, set healthStatus to "unclear" and explain why in description.'
-    )
-
-    genai_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-    contents = [
-        {
-            "role": "user",
-            "parts": [
-                {"inline_data": {"mime_type": req.mimeType, "data": req.imageBase64}},
-                {"text": "Diagnose this plant."},
-            ],
-        }
-    ]
-
-    try:
-        response = genai_client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=contents,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-            ),
-        )
-    except genai_errors.ClientError as e:
-        if e.code in (401, 403):
-            raise HTTPException(
-                status_code=500,
-                detail="GEMINI_API_KEY is missing or invalid on the server (set it in backend/.env).",
-            )
-        if e.code == 429:
-            raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
-        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
-    except genai_errors.ServerError as e:
-        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
-
-    try:
-        diagnosis = json.loads(response.text or "{}")
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail="The AI response could not be parsed. Please try again.")
-
+    diagnosis = diagnose_image(req.imageBase64, req.mimeType, req.cropName, source="phone")
     return {"diagnosis": diagnosis}

@@ -16,7 +16,9 @@ export default function CropsScreen() {
 
   if (!data && isLoading) return <LoadingState variant="crops" />;
   if (!data && error) return <ErrorState message={error} onRetry={fetchNow} />;
-  if (!data) return null;
+  // Never render nothing: with no data, no error and no in-flight request this
+  // used to paint a blank screen. Show the skeleton, as every other tab does.
+  if (!data) return <LoadingState variant="crops" />;
 
   return (
     <SafeAreaView style={styles.flex} edges={['top']}>

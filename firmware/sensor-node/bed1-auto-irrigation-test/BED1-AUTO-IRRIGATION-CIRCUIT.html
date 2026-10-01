@@ -1,0 +1,440 @@
+<title>Bed 1 Auto-Irrigation Bench Circuit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f4f4f1;
+    --surface: #ffffff;
+    --ink: #1c1c1c;
+    --muted: #5c5c58;
+    --line: #d9d8d2;
+    --accent: #4d7c0f;
+    --accent-soft: #eef4e3;
+    --pwr: #b42318;
+    --sig: #1d4ed8;
+    --warn-bg: #fff4ea;
+    --warn-ink: #9a3412;
+    --warn-line: #e3a67a;
+    --code-bg: #eeede8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16181a;
+      --surface: #1f2224;
+      --ink: #e8e7e1;
+      --muted: #a3a39c;
+      --line: #34383b;
+      --accent: #9ccc3c;
+      --accent-soft: #24301a;
+      --pwr: #f97066;
+      --sig: #7aa2ff;
+      --warn-bg: #3a2416;
+      --warn-ink: #f5a35c;
+      --warn-line: #7a4a2a;
+      --code-bg: #2a2d30;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16181a;
+    --surface: #1f2224;
+    --ink: #e8e7e1;
+    --muted: #a3a39c;
+    --line: #34383b;
+    --accent: #9ccc3c;
+    --accent-soft: #24301a;
+    --pwr: #f97066;
+    --sig: #7aa2ff;
+    --warn-bg: #3a2416;
+    --warn-ink: #f5a35c;
+    --warn-line: #7a4a2a;
+    --code-bg: #2a2d30;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding-inline: 20px;
+    padding-block: 36px 60px;
+  }
+  main { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 36px; }
+
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
+  .lede { color: var(--muted); max-width: 64ch; margin: 0; }
+  .eyebrow {
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin: 0 0 6px;
+  }
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 12.5px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  .pin { color: var(--accent); font-weight: 500; }
+
+  figure { margin: 0; }
+  figure svg { display: block; width: 100%; height: auto; }
+  .fig-wrap { overflow-x: auto; background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 14px; }
+  .fig-wrap svg { min-width: 640px; }
+  figcaption { color: var(--muted); font-size: 12.5px; margin-top: 8px; max-width: 70ch; }
+
+  /* SVG wire classes — colour by rail */
+  .w { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .w-pwr { stroke: var(--pwr); }
+  .w-3v3 { stroke: var(--accent); }
+  .w-sig { stroke: var(--sig); }
+  .w-opt { stroke: var(--muted); stroke-dasharray: 5 4; }
+  .box { fill: var(--surface); stroke: currentColor; stroke-width: 1.5; }
+  .box-load { fill: var(--warn-bg); stroke: var(--warn-ink); stroke-width: 1.5; }
+  .box-opt { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .part { fill: var(--surface); stroke: currentColor; stroke-width: 1.6; }
+  .node { fill: currentColor; }
+  .t { font-family: "IBM Plex Sans", system-ui, sans-serif; font-size: 12px; fill: currentColor; }
+  .t-b { font-weight: 600; }
+  .t-m { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; fill: currentColor; }
+  .t-muted { fill: var(--muted); }
+  .t-pwr { fill: var(--pwr); }
+  .t-3v3 { fill: var(--accent); }
+  .t-sig { fill: var(--sig); }
+  .t-warn { fill: var(--warn-ink); }
+  .arrow { fill: currentColor; }
+
+  .warn {
+    background: var(--warn-bg); border: 1.5px solid var(--warn-line); color: var(--warn-ink);
+    border-radius: 8px; padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .warn strong { display: block; margin-bottom: 2px; }
+  .warn p { margin: 0; color: var(--ink); }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  .tbl-wrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+  td:first-child { white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  .tbl-card { background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  ol.steps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+  ol.steps li::marker { color: var(--accent); font-weight: 600; }
+  ul.plain { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+  .parts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 18px; }
+  .parts li { display: flex; gap: 8px; align-items: baseline; }
+  .parts .ref { flex: none; min-width: 30px; color: var(--accent); font-weight: 500; }
+  .parts .qty { color: var(--muted); }
+
+  .stage { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-radius: 4px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
+</style>
+
+<main>
+  <header>
+    <p class="eyebrow">Agri-Intelligence 2026 · Smart irrigation · Bench test</p>
+    <h1>Bed 1 — Automatic Irrigation Bench Circuit</h1>
+    <p class="lede">
+      One capacitive probe, one mini submersible pump, one ESP32. The node reads the probe, decides
+      on its own when to water (Covo: start below 32 % VWC, stop at 48 %), and the backend polls it
+      so the dashboard shows the real reading and the cycle it triggered.
+    </p>
+  </header>
+
+  <section>
+    <p class="eyebrow">Figure 1</p>
+    <h2>Wiring</h2>
+    <figure>
+      <div class="fig-wrap">
+        <svg viewBox="0 0 960 560" role="img" aria-label="Schematic: ESP32 powers a capacitive soil probe from 3V3 and reads it on GPIO34; GPIO18 drives a 2N2222 through 220 ohms which switches the low side of a 5 volt mini pump, with a 1N4007 flyback diode across the pump; GPIO19 to the relay module is optional.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" class="arrow"></path>
+            </marker>
+          </defs>
+
+          <!-- +5 V rail (top) -->
+          <polyline class="w w-pwr" points="145,120 145,40 760,40 760,185"></polyline>
+          <text x="300" y="32" class="t-m t-pwr">+5 V  (from USB / VIN — never the 12 V bus)</text>
+
+          <!-- ESP32 -->
+          <rect x="60" y="120" width="170" height="330" rx="7" class="box"></rect>
+          <text x="145" y="145" class="t t-b" text-anchor="middle">ESP32 DevKit</text>
+          <text x="145" y="161" class="t t-muted" text-anchor="middle" font-size="11">USB to laptop</text>
+          <!-- pins, right edge -->
+          <text x="222" y="184" class="t-m" text-anchor="end">GND</text>
+          <text x="222" y="204" class="t-m t-sig" text-anchor="end">GPIO34</text>
+          <text x="222" y="244" class="t-m t-3v3" text-anchor="end">3V3</text>
+          <text x="222" y="384" class="t-m" text-anchor="end">GPIO18</text>
+          <text x="222" y="424" class="t-m t-muted" text-anchor="end">GPIO19</text>
+          <!-- pins, top / bottom -->
+          <text x="152" y="112" class="t-m t-pwr">5V / VIN</text>
+          <text x="152" y="478" class="t-m">GND</text>
+
+          <!-- Probe wires -->
+          <polyline class="w" points="230,180 450,180 450,130"></polyline>
+          <polyline class="w w-sig" points="230,200 520,200 520,130"></polyline>
+          <polyline class="w w-3v3" points="230,240 590,240 590,130"></polyline>
+          <text x="300" y="196" class="t-m t-sig">AOUT — analog, 0–3.3 V</text>
+
+          <!-- Probe -->
+          <rect x="420" y="60" width="200" height="70" rx="7" class="box"></rect>
+          <text x="520" y="86" class="t t-b" text-anchor="middle">Capacitive soil probe</text>
+          <text x="520" y="102" class="t t-muted" text-anchor="middle" font-size="11">v1.2 · 3-pin · in the pot</text>
+          <text x="450" y="124" class="t-m" text-anchor="middle">GND</text>
+          <text x="520" y="124" class="t-m t-sig" text-anchor="middle">AOUT</text>
+          <text x="590" y="124" class="t-m t-3v3" text-anchor="middle">VCC</text>
+
+          <!-- Ground rail (bottom) -->
+          <polyline class="w" points="145,450 145,500 760,500"></polyline>
+          <line x1="790" y1="500" x2="760" y2="500" class="w"></line>
+          <line x1="776" y1="500" x2="776" y2="512" class="w"></line>
+          <line x1="766" y1="512" x2="786" y2="512" class="w"></line>
+          <line x1="770" y1="518" x2="782" y2="518" class="w"></line>
+          <line x1="774" y1="524" x2="778" y2="524" class="w"></line>
+          <text x="300" y="518" class="t-m t-muted">common ground — ESP32 GND, breadboard − rail</text>
+
+          <!-- GPIO18 -> R1 -> Q1 base -->
+          <line x1="230" y1="380" x2="400" y2="380" class="w"></line>
+          <rect x="400" y="373" width="60" height="14" class="part"></rect>
+          <text x="430" y="366" class="t-m" text-anchor="middle">R1  220 Ω</text>
+          <line x1="460" y1="380" x2="750" y2="380" class="w"></line>
+          <text x="560" y="398" class="t-m t-muted">HIGH = pump on</text>
+
+          <!-- Q1 2N2222 -->
+          <circle cx="760" cy="380" r="22" class="part"></circle>
+          <line x1="750" y1="368" x2="750" y2="392" class="w" stroke-width="2.6"></line>
+          <line x1="750" y1="374" x2="760" y2="360" class="w"></line>
+          <line x1="750" y1="386" x2="760" y2="400" class="w"></line>
+          <polygon points="760,400 754,393 762,391" class="node"></polygon>
+          <text x="792" y="376" class="t-m">Q1 2N2222</text>
+          <text x="792" y="390" class="t-m t-muted">B · C up · E down</text>
+
+          <!-- Collector up to pump -, emitter down to GND -->
+          <line x1="760" y1="358" x2="760" y2="285" class="w"></line>
+          <line x1="760" y1="402" x2="760" y2="500" class="w"></line>
+
+          <!-- Pump -->
+          <rect x="700" y="200" width="120" height="70" rx="7" class="box-load"></rect>
+          <text x="760" y="226" class="t t-b t-warn" text-anchor="middle">Mini pump</text>
+          <text x="760" y="242" class="t t-muted" text-anchor="middle" font-size="11">3–6 V · ~150 mA</text>
+          <text x="760" y="258" class="t t-muted" text-anchor="middle" font-size="11">submerged in bucket</text>
+          <text x="748" y="196" class="t-m t-pwr" text-anchor="end">red +</text>
+          <text x="748" y="284" class="t-m" text-anchor="end">black −</text>
+          <line x1="760" y1="185" x2="760" y2="200" class="w w-pwr"></line>
+          <line x1="760" y1="270" x2="760" y2="285" class="w"></line>
+          <circle cx="760" cy="185" r="3" class="node"></circle>
+          <circle cx="760" cy="285" r="3" class="node"></circle>
+
+          <!-- D1 flyback across the pump -->
+          <line x1="760" y1="185" x2="870" y2="185" class="w w-pwr"></line>
+          <line x1="870" y1="185" x2="870" y2="228" class="w"></line>
+          <line x1="858" y1="228" x2="882" y2="228" class="w" stroke-width="2.4"></line>
+          <polygon points="858,252 882,252 870,228" class="part"></polygon>
+          <line x1="870" y1="252" x2="870" y2="285" class="w"></line>
+          <line x1="870" y1="285" x2="760" y2="285" class="w"></line>
+          <text x="890" y="236" class="t-m">D1 1N4007</text>
+          <text x="890" y="250" class="t-m t-muted">band → +5 V</text>
+
+          <!-- Optional valve relay -->
+          <line x1="230" y1="420" x2="400" y2="420" class="w w-opt"></line>
+          <rect x="400" y="405" width="190" height="34" rx="6" class="box-opt"></rect>
+          <text x="495" y="420" class="t t-muted" text-anchor="middle" font-size="11">Relay module IN2 (K2) — optional</text>
+          <text x="495" y="432" class="t t-muted" text-anchor="middle" font-size="10">only when VALVE_ENABLED = true</text>
+        </svg>
+      </div>
+      <figcaption>
+        Probe on the 3V3 rail with its signal into GPIO34 (an ADC1 pin — ADC2 pins stop working once WiFi is up).
+        Pump on the 5 V rail, switched on its ground side by Q1; D1 sits across the pump to absorb the motor's kick when Q1 switches off.
+      </figcaption>
+    </figure>
+  </section>
+
+  <div class="warn" role="note">
+    <span aria-hidden="true">⚠</span>
+    <div>
+      <strong>Two ways to kill this test in seconds</strong>
+      <p>The mini pump is 3–6 V — keep it off the fused 12 V bus that feeds the valve. And put the pump in the bucket <em>before</em> the probe goes into dry soil; the moment VWC reads under 32 % the node will switch it on, and it must not run dry.</p>
+    </div>
+  </div>
+
+  <section class="grid-2">
+    <div>
+      <h2>Connections</h2>
+      <div class="tbl-card tbl-wrap">
+        <table>
+          <thead><tr><th>From</th><th>To</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">ESP32 3V3</td><td class="mono">Probe VCC</td><td>Not 5 V — keeps AOUT inside the ADC's 3.3 V range</td></tr>
+            <tr><td class="mono">ESP32 GND</td><td class="mono">Probe GND</td><td>any GND pin</td></tr>
+            <tr><td class="mono">ESP32 GPIO34</td><td class="mono">Probe AOUT</td><td>ADC1, input-only</td></tr>
+            <tr><td class="mono">ESP32 GPIO18</td><td class="mono">R1 220 Ω → Q1 base</td><td>HIGH = pump on</td></tr>
+            <tr><td class="mono">Q1 emitter</td><td class="mono">GND rail</td><td></td></tr>
+            <tr><td class="mono">Q1 collector</td><td class="mono">Pump black (−)</td><td>low-side switch</td></tr>
+            <tr><td class="mono">Pump red (+)</td><td class="mono">+5 V</td><td>ESP32 5V/VIN pin is fine on USB</td></tr>
+            <tr><td class="mono">D1 band</td><td class="mono">+5 V</td><td>anode to pump black / Q1 collector</td></tr>
+            <tr><td class="mono">ESP32 GND</td><td class="mono">GND rail</td><td>one common ground for everything</td></tr>
+            <tr><td class="mono">GPIO19</td><td class="mono">Relay IN2</td><td>optional; valve wiring unchanged from manual test</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Parts</h2>
+      <ul class="parts">
+        <li><span class="ref">—</span><span>ESP32 DevKit on USB</span></li>
+        <li><span class="ref">—</span><span>Capacitive soil probe v1.2</span></li>
+        <li><span class="ref">—</span><span>Mini submersible pump, 3–6 V</span></li>
+        <li><span class="ref">R1</span><span>220 Ω resistor</span></li>
+        <li><span class="ref">Q1</span><span>2N2222 NPN</span></li>
+        <li><span class="ref">D1</span><span>1N4007 diode</span></li>
+        <li><span class="ref">C1</span><span>100–470 µF electrolytic across +5 V / GND <span class="qty">(only if the ESP32 resets when the pump starts)</span></span></li>
+        <li><span class="ref">—</span><span>Breadboard, jumpers, screw terminal or WAGO for the pump's thin leads</span></li>
+        <li><span class="ref">—</span><span>Bucket of water, pot of dry soil, ~7 mm silicone tubing</span></li>
+        <li><span class="ref">—</span><span>Multimeter</span></li>
+      </ul>
+      <h2 style="margin-top:22px">Physical layout</h2>
+      <ul class="plain">
+        <li>Pump fully under water in the bucket, tubing from its outlet into the pot.</li>
+        <li>Probe pushed into the pot's soil up to its line, <strong>near where the tube drips</strong> — a probe 10 cm from the water lands you on the 60 s safety cap before it ever reads 48 %.</li>
+        <li>Probe electronics (the top of the board) stay dry.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Figure 2</p>
+    <h2>How a reading reaches the dashboard — and who decides to water</h2>
+    <figure>
+      <div class="fig-wrap">
+        <svg viewBox="0 0 960 250" role="img" aria-label="Data path: the probe feeds the ESP32 every 2 seconds; the ESP32 itself switches the pump when moisture drops below 32 percent; the backend polls the node's status endpoint at most every 4 seconds and the dashboard and mobile app poll the backend's dashboard endpoint.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" class="arrow"></path>
+            </marker>
+          </defs>
+
+          <!-- boxes -->
+          <rect x="20" y="70" width="130" height="60" rx="7" class="box"></rect>
+          <text x="85" y="96" class="t t-b" text-anchor="middle">Soil probe</text>
+          <text x="85" y="112" class="t-m t-muted" text-anchor="middle">raw 0–4095</text>
+
+          <rect x="230" y="55" width="190" height="90" rx="7" class="box"></rect>
+          <text x="325" y="80" class="t t-b" text-anchor="middle">ESP32 node</text>
+          <text x="325" y="97" class="t-m t-muted" text-anchor="middle">raw → VWC %</text>
+          <text x="325" y="112" class="t-m t-muted" text-anchor="middle">&lt; 32 % start · ≥ 48 % stop</text>
+          <text x="325" y="127" class="t-m t-muted" text-anchor="middle">GET /status</text>
+
+          <rect x="230" y="180" width="190" height="50" rx="7" class="box-load"></rect>
+          <text x="325" y="202" class="t t-b t-warn" text-anchor="middle">Pump</text>
+          <text x="325" y="218" class="t-m t-muted" text-anchor="middle">via GPIO18 · Q1</text>
+
+          <rect x="510" y="55" width="200" height="90" rx="7" class="box"></rect>
+          <text x="610" y="80" class="t t-b" text-anchor="middle">FastAPI backend</text>
+          <text x="610" y="97" class="t-m t-muted" text-anchor="middle">sync_bed1_from_esp32()</text>
+          <text x="610" y="112" class="t-m t-muted" text-anchor="middle">Bed 1 vwc · pump · cycle</text>
+          <text x="610" y="127" class="t-m t-muted" text-anchor="middle">GET /api/dashboard</text>
+
+          <rect x="800" y="40" width="140" height="50" rx="7" class="box"></rect>
+          <text x="870" y="70" class="t t-b" text-anchor="middle">Web dashboard</text>
+          <rect x="800" y="110" width="140" height="50" rx="7" class="box"></rect>
+          <text x="870" y="140" class="t t-b" text-anchor="middle">Mobile app</text>
+
+          <!-- arrows -->
+          <line x1="150" y1="100" x2="228" y2="100" class="w w-sig" marker-end="url(#ah2)"></line>
+          <text x="189" y="92" class="t-m t-sig" text-anchor="middle">every 2 s</text>
+
+          <line x1="325" y1="145" x2="325" y2="178" class="w" marker-end="url(#ah2)"></line>
+          <text x="335" y="166" class="t-m t-muted">decides locally</text>
+
+          <line x1="508" y1="100" x2="422" y2="100" class="w" marker-end="url(#ah2)"></line>
+          <text x="465" y="92" class="t-m" text-anchor="middle">polls ≤ every 4 s</text>
+          <text x="465" y="118" class="t-m t-muted" text-anchor="middle">/status?key=…</text>
+
+          <line x1="798" y1="65" x2="712" y2="90" class="w" marker-end="url(#ah2)"></line>
+          <line x1="798" y1="135" x2="712" y2="110" class="w" marker-end="url(#ah2)"></line>
+          <text x="755" y="58" class="t-m t-muted" text-anchor="middle">polls</text>
+          <text x="755" y="152" class="t-m t-muted" text-anchor="middle">polls</text>
+
+          <!-- manual path note -->
+          <text x="610" y="170" class="t-m t-muted" text-anchor="middle">manual Start / Stop from the apps go the other way:</text>
+          <text x="610" y="186" class="t-m t-muted" text-anchor="middle">backend → /irrigate or /stop → node</text>
+        </svg>
+      </div>
+      <figcaption>
+        The watering decision never leaves the ESP32 — it works with WiFi down. The backend only reads
+        <code>/status</code>, throttled to once per 4 s no matter how many dashboards are open, and rewrites
+        Bed 1's <code>vwc</code>, pump/valve state and trend from it. If the node is unreachable the dashboard
+        keeps the last reading and reports <code>esp32Online: false</code>.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Before you start</h2>
+    <ol class="steps">
+      <li>Flash <code>bed1-auto-irrigation-test.ino</code>. Serial Monitor at 115200 — note the IP.</li>
+      <li>In <code>backend/.env</code>: <code>ESP32_BASE_URL=http://&lt;that ip&gt;</code> and <code>ESP32_SHARED_SECRET=</code> the same key as the sketch. Restart <code>uvicorn</code>.</li>
+      <li>Probe in the <strong>air</strong> → open <code>http://&lt;ip&gt;/raw?key=…</code>, write down <code>raw</code>. Probe in a <strong>cup of water</strong> → again. Then <code>/calibrate?dry=XXXX&amp;wet=YYYY&amp;key=…</code>. Copy the two numbers into <code>dryRaw</code> / <code>wetRaw</code> when you're happy.</li>
+      <li>Pump into the bucket, tube into the pot, probe into the dry soil. Open the dashboard.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>What you should see</h2>
+    <div class="tbl-card tbl-wrap">
+      <table>
+        <thead><tr><th>Stage</th><th>On the bench</th><th>Serial monitor</th><th>Dashboard / app (within ~5 s)</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="stage">1 · idle, dry</span></td>
+            <td>Probe in dry soil, pump off</td>
+            <td><code>[soil] raw=… vwc=1x%</code> then <code>BED 1 IRRIGATION STARTED — AUTO</code></td>
+            <td>Bed 1 VWC drops from the fake 18 % to your real number; state <em>critical</em>; Recent Activity gets <em>Automatic irrigation started — Bed 1</em></td>
+          </tr>
+          <tr>
+            <td><span class="stage">2 · running</span></td>
+            <td>Pump runs, water reaches the pot</td>
+            <td><code>Pump ON. Irrigation RUNNING.</code> and VWC climbing 2 s at a time</td>
+            <td>Pump ON, valve OPEN, <em>irrigating</em>; system status IRRIGATING; trend line rising</td>
+          </tr>
+          <tr>
+            <td><span class="stage">3 · stop</span></td>
+            <td>Pump stops on its own</td>
+            <td><code>Pump OFF — moisture reached optimal band</code> (or <em>auto safety cap</em> at 60 s — move the tube closer)</td>
+            <td>Pump OFF; state <em>optimal</em> if ≥ 48 %; activity <em>Irrigation complete — Bed 1</em></td>
+          </tr>
+          <tr>
+            <td><span class="stage">4 · soak</span></td>
+            <td>Nothing for 90 s even if you pull the probe out</td>
+            <td><code>Soak period: 90 s before auto may re-trigger</code></td>
+            <td><code>/status</code> shows <code>soakRemainingSec</code> counting down; dashboard idle</td>
+          </tr>
+          <tr>
+            <td><span class="stage">5 · fault</span></td>
+            <td>Unplug AOUT</td>
+            <td><code>SENSOR FAULT</code>, no cycle starts</td>
+            <td><code>sensorOk: false</code> on Bed 1; VWC holds the last good value; manual Start still works</td>
+          </tr>
+          <tr>
+            <td><span class="stage">6 · manual</span></td>
+            <td>Tap Start on the app</td>
+            <td><code>BED 1 IRRIGATION STARTED — MANUAL</code></td>
+            <td>Same as stage 2 but <code>cycleType: manual</code>; Stop cuts it short</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>If it doesn't behave</h2>
+    <ul class="plain">
+      <li><strong>VWC stuck at 0 or 100.</strong> Calibration is backwards or unmeasured — dry must be the <em>higher</em> raw number on a capacitive probe.</li>
+      <li><strong><code>sensorOk: false</code> with the probe plugged in.</strong> AOUT is on an ADC2 pin, or the probe is powered from 5 V and AOUT is pinned above 3.3 V. Check the pin is 34 and VCC is 3V3.</li>
+      <li><strong>ESP32 reboots when the pump kicks in.</strong> USB can't supply the inrush — add C1 across +5 V/GND or power the pump from a separate 5 V supply with grounds joined.</li>
+      <li><strong>Pump runs but VWC never moves.</strong> Water isn't reaching the probe — the 60 s cap will keep tripping. Move the tube or the probe.</li>
+      <li><strong>Dashboard still shows 18 %.</strong> <code>ESP32_BASE_URL</code> not set or not reachable from where the backend runs; <code>systemStatus.esp32Online</code> tells you which.</li>
+    </ul>
+  </section>
+</main>

@@ -36,6 +36,19 @@ npm-debug.log*
 # Claude Design canvas artifacts — local authoring scratch, not project source.
 # Main.dc.html references a support.js that isn't tracked, and the published
 # circuit page is a multi-MB single file; both are kept out of git history.
-Main.dc.html
-canvas.json
-bed1-irrigation-circuit.html
+design-canvas/
+
+# Firmware credentials. Each sketch reads WiFi + the backend shared secret from
+# a secrets.h next to its .ino; only the .example template is tracked, so the
+# farm's WiFi password and the pump/camera shared secrets never reach git.
+secrets.h
+!secrets.h.example
+
+# Generated video/launch artifacts (hyperframes + brag output) — build output,
+# not project source, and large.
+videos/
+brag-output/
+
+# Vendored upstream checkout with its own .git — would land as a broken
+# submodule entry rather than real files.
+OmniVoice/
