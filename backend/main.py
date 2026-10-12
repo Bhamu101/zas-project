@@ -10,13 +10,18 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import llm
 from auth import require_user
 from camera import request_capture, router as camera_router, set_health_alert_hook
 from diagnosis import diagnose_image
 from google import genai
-from google.genai import errors as genai_errors
+from twilio.http.http_client import TwilioHttpClient
 from twilio.rest import Client as TwilioClient
 from twilio.base.exceptions import TwilioRestException
+
+# Seconds to wait on Twilio before giving the alert up. Short on purpose: the
+# alert is best-effort and is sent from request handlers.
+WHATSAPP_TIMEOUT_SEC = 6
 
 load_dotenv()
 
@@ -211,13 +216,25 @@ def send_whatsapp_alert(message: str) -> None:
     if not all([sid, token, from_number, to_number]):
         return
 
+    # Two things matter here beyond Twilio's own errors:
+    #  - Twilio's HTTP client has NO timeout by default, so on a network that is
+    #    up but has no internet (a phone hotspot with data off, a venue with
+    #    dead uplink) the call can wait forever.
+    #  - It raises plain requests/OS errors, not TwilioRestException, when the
+    #    network itself fails.
+    # This runs inside /api/dashboard when an automatic cycle starts, so either
+    # one would stall or fail the dashboard at exactly the wrong moment. An alert
+    # is a nicety; the irrigation it describes has already happened.
     try:
-        TwilioClient(sid, token).messages.create(
+        client = TwilioClient(
+            sid, token, http_client=TwilioHttpClient(timeout=WHATSAPP_TIMEOUT_SEC)
+        )
+        client.messages.create(
             from_=f"whatsapp:{from_number}",
             to=f"whatsapp:{to_number}",
             body=message,
         )
-    except TwilioRestException as e:
+    except Exception as e:
         print(f"WhatsApp alert failed: {e}")
 
 # In-memory state for the demo (no database yet — resets on server restart).
@@ -1010,11 +1027,7 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/assistant/chat", dependencies=[Depends(require_user)])
 def assistant_chat(req: ChatRequest):
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise HTTPException(
-            status_code=500,
-            detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
-        )
+    llm.require_key()
 
     dashboard = get_dashboard()
     beds_summary = "; ".join(
@@ -1036,29 +1049,19 @@ def assistant_chat(req: ChatRequest):
         f"Water used today: {dashboard['kpis']['waterUsedTodayL']} L."
     )
 
-    genai_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     contents = [
         {"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
         for m in req.messages
     ]
 
-    try:
-        response = genai_client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=contents,
-            config=genai.types.GenerateContentConfig(system_instruction=system_prompt),
-        )
-    except genai_errors.ClientError as e:
-        if e.code in (401, 403):
-            raise HTTPException(
-                status_code=500,
-                detail="GEMINI_API_KEY is missing or invalid on the server (set it in backend/.env).",
-            )
-        if e.code == 429:
-            raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
-        raise HTTPException(status_code=502, detail=f"Assistant request failed: {e.message}")
-    except genai_errors.ServerError as e:
-        raise HTTPException(status_code=502, detail=f"Assistant request failed: {e.message}")
+    # Retries, per-attempt timeout and model fallback all live in llm.generate —
+    # "this model is currently experiencing high demand" is a routine, transient
+    # Gemini response and should not be the farmer's answer.
+    response = llm.generate(
+        contents,
+        config=genai.types.GenerateContentConfig(system_instruction=system_prompt),
+        what="Assistant request",
+    )
 
     return {"reply": response.text or ""}
 
@@ -1087,11 +1090,7 @@ def diagnose_crop_health(req: CropHealthRequest):
     Shared by both clients (mobile app and web dashboard's Crop Health page) so there is
     exactly one diagnosis pipeline/prompt to maintain.
     """
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise HTTPException(
-            status_code=500,
-            detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
-        )
+    llm.require_key()
 
     if req.mimeType not in ALLOWED_IMAGE_MIME_TYPES:
         raise HTTPException(

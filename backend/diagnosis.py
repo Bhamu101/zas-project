@@ -6,13 +6,11 @@ so both paths return the same shape and improve together.
 """
 
 import json
-import os
 
 from fastapi import HTTPException
 from google import genai
-from google.genai import errors as genai_errors
 
-MODEL = "gemini-3.6-flash"
+import llm
 
 # Photo-source specific framing. The camera sees a whole bed from above at
 # 800x600, not a close-up of one leaf, so the model is told what it can and
@@ -37,11 +35,7 @@ SOURCE_CONTEXT = {
 def diagnose_image(image_base64: str, mime_type: str, crop_name: str | None = None,
                    source: str = "phone") -> dict:
     """Run one diagnosis. Raises HTTPException with a user-readable detail on failure."""
-    if not os.environ.get("GEMINI_API_KEY"):
-        raise HTTPException(
-            status_code=500,
-            detail="GEMINI_API_KEY is not set on the server. Copy backend/.env.example to backend/.env and add your key.",
-        )
+    llm.require_key()
 
     crop_hint = f" The farmer says this is a {crop_name} plant." if crop_name else ""
     system_prompt = (
@@ -62,7 +56,6 @@ def diagnose_image(image_base64: str, mime_type: str, crop_name: str | None = No
         'show a plant, set healthStatus to "unclear" and explain why in description.'
     )
 
-    genai_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
     contents = [
         {
             "role": "user",
@@ -73,26 +66,16 @@ def diagnose_image(image_base64: str, mime_type: str, crop_name: str | None = No
         }
     ]
 
-    try:
-        response = genai_client.models.generate_content(
-            model=MODEL,
-            contents=contents,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json",
-            ),
-        )
-    except genai_errors.ClientError as e:
-        if e.code in (401, 403):
-            raise HTTPException(
-                status_code=500,
-                detail="GEMINI_API_KEY is missing or invalid on the server (set it in backend/.env).",
-            )
-        if e.code == 429:
-            raise HTTPException(status_code=429, detail="Rate limited — please try again in a moment.")
-        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
-    except genai_errors.ServerError as e:
-        raise HTTPException(status_code=502, detail=f"Diagnosis request failed: {e.message}")
+    # Shares the retry / timeout / model-fallback path with the assistant, so a
+    # busy model does not turn into a failed diagnosis on the farmer's phone.
+    response = llm.generate(
+        contents,
+        config=genai.types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            response_mime_type="application/json",
+        ),
+        what="Diagnosis request",
+    )
 
     try:
         diagnosis = json.loads(response.text or "{}")

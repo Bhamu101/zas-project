@@ -189,11 +189,20 @@ const bool VALVE_ENABLED = false;
  */
 
 const bool PROBE_FITTED = true;    // stage 2 onwards
-// false = MANUAL-ONLY TEST (2026-09-25): the node never starts the
-// pump on its own; only /irrigate from the dashboard/app does.
-// The probe is still read and reported. Set back to true to re-arm
-// automatic irrigation (or send /auto?on=1 without re-flashing).
-const bool AUTO_AT_BOOT = false;   // stage 3 onwards
+
+// STAGE 3 / DEMO. Was false (manual-only test, 2026-09-25).
+//
+// true means the automatic loop is armed the moment the node powers up.
+// It was previously left false and re-armed by hand with /auto?on=1, but
+// that quietly disarms automatic irrigation after any power cut or reset —
+// which, during a demo, looks exactly like the feature not working.
+//
+// ⚠ Consequence of true: if the probe reads below VWC_TRIGGER at boot, the
+// node starts watering within a couple of seconds of powering on, with
+// nobody having asked. That is the intended behaviour on the bed, but do
+// not power the node up with the probe sitting dry on a bench unless you
+// want the pump to run. Set false while bench-testing wiring.
+const bool AUTO_AT_BOOT = true;    // stage 3 onwards
 
 // Level that means OFF for a relay input — what the pins are
 // parked at before and after every cycle, and at boot.
@@ -278,12 +287,26 @@ const unsigned long MAX_RUN_SEC     = 7200;   // 2 h
 // resistive probe a disconnected lead reads as bone dry, so this
 // is the ONLY thing standing between a broken wire and a bed
 // watered until the tank runs dry. Measure before raising it.
-const unsigned long AUTO_MAX_RUN_SEC = 600;   // 10 min — ESTIMATE
+// DEMO VALUE. Field value was 600 (10 min) — restore it before the rig is
+// left running unattended on the real bed.
+//
+// 60 s is long enough to narrate a cycle and lift the probe into water, short
+// enough that an audience never waits. It is also a safer backstop, not a
+// looser one: a cycle that ends on this cap waters for one minute instead of
+// ten, so a broken probe cannot empty the tank while nobody is watching.
+const unsigned long AUTO_MAX_RUN_SEC = 60;    // 1 min — DEMO (field: 600)
 
 // Water needs time to percolate to the probe. Without this the
 // node would re-trigger on its own still-dry reading and
 // short-cycle the pump.
-const unsigned long SOAK_MS = 900000UL;       // 15 min — ESTIMATE
+// DEMO VALUE. Field value was 900000 (15 min) — restore it before the rig is
+// left on the real bed, where water genuinely needs that long to percolate
+// down to the probe and a shorter soak would short-cycle the pump.
+//
+// At 15 min the node refuses to auto-trigger again for a quarter of an hour
+// after any cycle, so a demo gets exactly one attempt and a second group of
+// judges sees nothing. 2 min allows a repeat on demand.
+const unsigned long SOAK_MS = 120000UL;       // 2 min — DEMO (field: 900000)
 
 
 // ============================================================

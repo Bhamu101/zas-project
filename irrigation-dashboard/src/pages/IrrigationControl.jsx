@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Droplets, Play, Info, MoreVertical, ChevronRight, Calendar, Clock, Loader2,
 } from "lucide-react";
@@ -32,6 +32,12 @@ const SIM_TICK_MS = 450;          // how often the moisture reading updates
 const SIM_STEP_PCT = 1.4;         // average % gained per tick
 const SIM_TARGET_GAIN = 24;       // total % the bed climbs once triggered
 
+// Roughly how long that cosmetic ramp takes end to end. The simulated beds
+// finish in seconds rather than running the requested duration, so their cycle
+// bar is scaled to the ramp — otherwise it would crawl to 0.4% of a 30 minute
+// cycle and then freeze, which reads as broken rather than as finished.
+const SIM_CYCLE_SEC = (SIM_TARGET_GAIN / SIM_STEP_PCT) * (SIM_TICK_MS / 1000);
+
 const STATE_LABEL = { optimal: "Optimal", "needs-water": "Needs Water", critical: "Critical" };
 
 const stateStyles = {
@@ -56,11 +62,85 @@ function formatCountdown(sec) {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-// Bed 1's cycle progress, from the node's own countdown (remainingSec in
-// /status, relayed by the backend). This is the number that moves during a
-// short manual test — soil moisture lags well behind the pump, because water
-// takes minutes to soak down to the probe.
-function CycleProgress({ bed }) {
+// How often the manual cycle bar redraws. Fine enough to look continuous
+// without re-rendering the card constantly.
+const CYCLE_TICK_MS = 500;
+
+/**
+ * Progress of a MANUAL watering cycle, as a fraction of its requested duration.
+ *
+ * It deliberately does NOT read bed.remainingSec straight through. The backend
+ * writes that field exactly twice — the full duration when a cycle starts, and
+ * zero when it stops — and relies on Bed 1's ESP32 to count it down in between.
+ * So whenever no node is reachable (and always, for the simulated beds) the
+ * value is frozen at its starting number and a bar driven off it sits at 0%
+ * for the whole cycle.
+ *
+ * Instead the bar runs on a local clock anchored at the moment the cycle began,
+ * and re-anchors itself whenever the reported countdown actually *moves* — which
+ * only happens when a real node is reporting. That gives a smooth bar between
+ * the 3s polls, and keeps it honest against the hardware when hardware is there.
+ *
+ * When the cycle ends the clock is pinned at the instant it stopped, so the bar
+ * freezes where it got to instead of resetting or drifting on to 100%.
+ */
+function useCycleProgress(bed, running, totalSecOverride) {
+  const totalSec = Math.max(1, totalSecOverride ?? (bed.durationMin || 1) * 60);
+  const reported = bed.remainingSec;
+
+  // The anchor is only ever written inside effects; render reads `progress`
+  // state alone, so the component stays pure.
+  const anchorRef = useRef(null); // { start: epoch ms, seen, stopped }
+  const [progress, setProgress] = useState(null);
+
+  const sample = useCallback((done) => {
+    const a = anchorRef.current;
+    if (!a) return;
+    const elapsed = (Date.now() - a.start) / 1000;
+    const remaining = Math.max(0, Math.min(totalSec, totalSec - elapsed));
+    setProgress({
+      pct: ((totalSec - remaining) / totalSec) * 100,
+      remainingSec: Math.round(remaining),
+      done,
+    });
+  }, [totalSec]);
+
+  useEffect(() => {
+    if (running) {
+      const a = anchorRef.current;
+      if (a == null || a.stopped) {
+        // New cycle. If the backend already reports a partial countdown, start
+        // from there so a refresh mid-cycle picks up where it should.
+        const elapsed = reported > 0 && reported < totalSec ? totalSec - reported : 0;
+        anchorRef.current = { start: Date.now() - elapsed * 1000, seen: reported, stopped: false };
+      } else if (reported !== a.seen && reported > 0) {
+        // The countdown moved, so a real node is driving it — re-anchor to it.
+        anchorRef.current = {
+          start: Date.now() - (totalSec - reported) * 1000,
+          seen: reported,
+          stopped: false,
+        };
+      }
+      sample(false);
+    } else if (anchorRef.current && !anchorRef.current.stopped) {
+      anchorRef.current.stopped = true;
+      sample(true); // pin the bar at the instant irrigation stopped
+    }
+  }, [running, reported, totalSec, sample]);
+
+  // Tick only while running: when irrigation stops, so does the bar.
+  useEffect(() => {
+    if (!running) return undefined;
+    const id = setInterval(() => sample(false), CYCLE_TICK_MS);
+    return () => clearInterval(id);
+  }, [running, sample]);
+
+  return progress;
+}
+
+function CycleProgress({ bed, running, totalSecOverride }) {
+  const cycle = useCycleProgress(bed, running, totalSecOverride);
+
   if (bed.cycleType === "auto") {
     return (
       <p className="text-xs text-[var(--color-muted)] mt-3">
@@ -70,18 +150,19 @@ function CycleProgress({ bed }) {
       </p>
     );
   }
-  const totalSec = Math.max(1, (bed.durationMin || 1) * 60);
-  const remaining = Math.min(totalSec, Math.max(0, bed.remainingSec ?? totalSec));
-  const pct = ((totalSec - remaining) / totalSec) * 100;
+  if (!cycle) return null;
+
   return (
     <div className="mt-3">
       <div className="flex items-center justify-between text-xs">
         <span className="font-semibold text-[var(--color-ink)]">Watering cycle</span>
         <span className="tabular-nums text-[var(--color-muted)]">
-          {Math.round(pct)}% · {formatCountdown(remaining)} left
+          {cycle.done
+            ? `stopped at ${Math.round(cycle.pct)}%`
+            : `${Math.round(cycle.pct)}% · ${formatCountdown(cycle.remainingSec)} left`}
         </span>
       </div>
-      <ProgressBar percent={pct} color="bg-sky-500" />
+      <ProgressBar percent={cycle.pct} color={cycle.done ? "bg-slate-400" : "bg-sky-500"} />
     </div>
   );
 }
@@ -262,7 +343,14 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
               </p>
 
               <ProgressBar percent={vwc} color={s.bar} />
-              {bed.id === HARDWARE_BED_ID && running && <CycleProgress bed={bed} />}
+              {/* Stays mounted after the cycle ends so the bar freezes where it
+                  stopped, rather than vanishing. It renders nothing until a
+                  cycle has actually been started on this bed. */}
+              <CycleProgress
+                bed={bed}
+                running={running}
+                totalSecOverride={bed.id === HARDWARE_BED_ID ? undefined : SIM_CYCLE_SEC}
+              />
 
               <div className="flex items-center gap-1 text-xs text-[var(--color-muted)] mt-2 mb-4">
                 <ChevronRight size={12} />
@@ -305,8 +393,12 @@ export default function IrrigationControl({ beds = [], systemInfo, irrigationOve
                 ) : running ? (
                   <>
                     <Loader2 size={15} className="animate-spin" />
-                    {bed.id === HARDWARE_BED_ID && bed.cycleType !== "auto" && bed.remainingSec > 0
-                      ? `Irrigating… ${formatCountdown(bed.remainingSec)} left`
+                    {/* The live countdown is on the cycle bar below, which runs
+                        on its own clock. bed.remainingSec is only ticked down by
+                        a reachable ESP32, so repeating it here would show a
+                        frozen "29:59 left" beside a bar that is clearly moving. */}
+                    {bed.id === HARDWARE_BED_ID
+                      ? "Irrigating…"
                       : `Irrigating… ${Math.round(vwc)}%`}
                   </>
                 ) : (
